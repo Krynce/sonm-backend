@@ -42,7 +42,7 @@ BACKEND_TAG=v0.1.0
 WEB_TAG=<sha из Actions sonm-web>
 EOF
 
-docker compose config -q && docker compose pull
+docker compose config -q && docker compose pull scheduler api gateway files embeds push voice web   # minio/minio пропал с Docker Hub, берётся локальный
 ```
 
 Сверить `cat $STOAT/Revolt.toml` с `Sonm.toml`:

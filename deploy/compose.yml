@@ -48,6 +48,8 @@ services:
 
   minio:
     image: docker.io/minio/minio
+    # ponytail: minio/minio is gone from Docker Hub; reuse the copy already on the VPS until the move to cloud MinIO
+    pull_policy: missing
     command: server /data
     restart: always
     volumes:
