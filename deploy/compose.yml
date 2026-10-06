@@ -184,13 +184,13 @@ services:
       - traefik.http.routers.sonm-web.tls.certresolver=myresolver
       - traefik.http.services.sonm-web.loadbalancer.server.port=5000
 
-  # /desktop downloads the Windows installer built from rust-stoat-desktop (cargo tauri build).
+  # /desktop downloads the portable Windows exe built from sonm-desktop (cargo build --release).
   desktop:
     image: nginx:alpine
     restart: always
     networks: [proxy_net]
     volumes:
-      - ./sonm-setup.exe:/srv/sonm-setup.exe:ro
+      - ./Sonm.exe:/srv/Sonm.exe:ro
     configs:
       - source: desktop_nginx
         target: /etc/nginx/conf.d/default.conf
@@ -209,9 +209,9 @@ configs:
       server {
         listen 80;
         location = /desktop {
-          alias /srv/sonm-setup.exe;
+          alias /srv/Sonm.exe;
           default_type application/vnd.microsoft.portable-executable;
-          add_header Content-Disposition 'attachment; filename="sonm-setup.exe"';
+          add_header Content-Disposition 'attachment; filename="Sonm.exe"';
           add_header Cache-Control no-cache;
         }
       }
