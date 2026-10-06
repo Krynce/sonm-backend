@@ -82,7 +82,7 @@ docker compose logs -f api scheduler
 - [ ] голосовой звонок с двух устройств
 - [ ] push: включить уведомления, отправить сообщение со второго аккаунта
 - [ ] `curl -sI https://chat.krynce.ru/autumn/` и `/january/` отвечают (алиасы)
-- [ ] `https://chat.krynce.ru/desktop` по-прежнему отдаёт zip
+- [ ] `https://chat.krynce.ru/desktop` отдаёт `sonm-setup.exe`
 
 ## 5. Откат
 
@@ -102,4 +102,4 @@ cd $STOAT && docker compose up -d
 - При переезде БД и файлов на отдельные серверы:
   - переименовать `revolt` → `sonm` и `revolt-uploads` → `sonm-uploads` через `scripts/migrate-from-revolt.sh`;
   - выставить `database.name` и `files.s3.default_bucket` в новые имена.
-- `/desktop` → rust-клиент вместо zip.
+- `/desktop` отдаёт установщик из `rust-stoat-desktop`. Чтобы обновить: `cargo tauri build`, потом `scp target/release/bundle/nsis/Sonm_*_x64-setup.exe root@VPS:/opt/sonm/sonm-setup.exe`.
