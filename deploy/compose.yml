@@ -96,6 +96,7 @@ services:
     depends_on:
       database: { condition: service_healthy }
       redis: { condition: service_started }
+      rabbit: { condition: service_healthy }
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy_net
