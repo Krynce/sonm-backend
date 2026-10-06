@@ -31,6 +31,8 @@ jobs:
           push: true
           platforms: linux/amd64 # VPS is x86_64; add linux/arm64 if ever needed (doubles build time)
           tags: ${{ env.REGISTRY }}/base:latest
+          # 4 = runner cores; the default 10 ran 7 LTO links at once and ran out of memory
+          build-args: CARGO_BUILD_JOBS=4
           cache-from: type=gha,scope=base
           cache-to: type=gha,scope=base,mode=max
 

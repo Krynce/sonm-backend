@@ -16,7 +16,7 @@ members = [
 redis23 = { package = "redis", version = "0.23.3", git = "https://github.com/revoltchat/redis-rs", rev = "523b2937367e17bd0073722bf6e23d06042cb4e4" }
 
 [profile.release]
-lto = true
+lto = "thin" # fat LTO of 7 binaries exhausts CI runner memory
 
 [workspace.dependencies]
 # Async
