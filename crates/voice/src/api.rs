@@ -101,7 +101,13 @@ pub async fn ingress(
 
             let participants = voice_client.get_room_participants(node, channel_id).await?;
 
-            if participants.len() == 1 {
+            // Call started messages only make sense for DMs / groups, not server voice channels
+            if participants.len() == 1
+                && matches!(
+                    channel,
+                    Channel::DirectMessage { .. } | Channel::Group { .. }
+                )
+            {
                 let user = Reference::from_unchecked(user_id).as_user(db).await?;
                 let message_id = Ulid::from_datetime(
                     Timestamp::UNIX_EPOCH
