@@ -6,8 +6,8 @@ use std::{
 use crate::User;
 use crate::events::{client::EventV1, rabbit::*};
 use lapin::{
-    BasicProperties, Channel, Connection, ConnectionProperties, Error as AMQPError,
-    options::BasicPublishOptions,
+    BasicProperties, Channel, Connection, ConnectionProperties, Error as AMQPError, ExchangeKind,
+    options::{BasicPublishOptions, ExchangeDeclareOptions},
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable},
 };
@@ -51,6 +51,21 @@ impl AMQP {
             publish_event: Self::create_channel(&connection).await,
             connection,
         };
+
+        // Publishing to a missing exchange closes the channel, so don't depend on
+        // the scheduler having started first. Same options as its declaration.
+        this.publish_event
+            .exchange_declare(
+                config().await.rabbit.default_exchange.clone().into(),
+                ExchangeKind::Topic,
+                ExchangeDeclareOptions {
+                    durable: true,
+                    ..Default::default()
+                },
+                FieldTable::default(),
+            )
+            .await
+            .expect("Failed to declare exchange");
 
         let _ = AMQP_INSTANCE.set(this.clone());
 

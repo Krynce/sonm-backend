@@ -343,7 +343,6 @@ impl Member {
 mod tests {
     use crate::{Member, PartialMember, RemovalIntention, Server, User};
     use iso8601_timestamp::{Duration, Timestamp};
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
     use sonm_models::v0::DataCreateServer;
 
     #[tokio::test]

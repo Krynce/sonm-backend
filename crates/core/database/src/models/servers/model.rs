@@ -538,7 +538,6 @@ mod tests {
     use sonm_permissions::{ChannelPermission, calculate_server_permissions};
 
     use crate::{fixture, util::permissions::DatabasePermissionQuery};
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
 
     #[tokio::test]
     async fn permissions() {

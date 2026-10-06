@@ -973,7 +973,6 @@ mod tests {
 
     #[tokio::test]
     async fn create_user() {
-        use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
         use sonm_result::Result;
 
         database_test!(|db| async move {
@@ -1010,7 +1009,6 @@ mod tests {
     #[tokio::test]
     async fn remove_profile_background() {
         use crate::{FieldsUser, File, Metadata, PartialUser, UserProfile};
-        use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
 
         database_test!(|db| async move {
             let mut user = User::create(&db, "Test".to_string(), None, None)

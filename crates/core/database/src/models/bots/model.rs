@@ -180,7 +180,6 @@ impl Bot {
 mod tests {
 
     use crate::{Bot, FieldsBot, PartialBot, User};
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
 
     #[tokio::test]
     async fn crud() {

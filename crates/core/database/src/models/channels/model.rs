@@ -900,7 +900,6 @@ impl IntoDocumentPath for FieldsChannel {
 #[cfg(test)]
 mod tests {
     use crate::{fixture, util::permissions::DatabasePermissionQuery};
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
     use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
 
     #[tokio::test]
