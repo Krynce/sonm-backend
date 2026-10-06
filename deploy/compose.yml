@@ -1,0 +1,186 @@
+name: sonm
+
+# Production stack behind the shared Traefik (proxy_net, resolver myresolver).
+# Data lives in ${DATA_DIR} — the old Stoat self-hosted ./data, reused in place.
+# Never run this alongside the old stack: both would open the same Mongo files.
+
+x-backend: &backend
+  env_file: secrets.env
+  restart: always
+  volumes:
+    - ./Sonm.toml:/Sonm.toml:ro
+
+x-public: &public
+  networks: [default, proxy_net]
+
+services:
+  database:
+    # ponytail: mongo 8.x не стартует на ядре Ubuntu 7.0.0-N (SERVER-121912); вернуть latest, когда ядро будет >= 7.0.14 или 7.1
+    image: docker.io/mongo:7.0
+    restart: always
+    volumes:
+      - ${DATA_DIR:?}/db:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: valkey/valkey:9-alpine
+    restart: always
+
+  rabbit:
+    image: docker.io/rabbitmq:4
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    volumes:
+      - ${DATA_DIR:?}/rabbit:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  minio:
+    image: docker.io/minio/minio
+    command: server /data
+    restart: always
+    volumes:
+      - ${DATA_DIR:?}/minio:/data
+    environment:
+      MINIO_ROOT_USER: minioautumn
+      MINIO_ROOT_PASSWORD: minioautumn
+      MINIO_DOMAIN: minio
+    networks:
+      default:
+        aliases:
+          - revolt-uploads.minio # virtual-host bucket access
+
+  scheduler:
+    <<: *backend
+    image: ghcr.io/krynce/sonm-backend/scheduler:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      rabbit: { condition: service_healthy }
+      minio: { condition: service_started }
+
+  api:
+    <<: [*backend, *public]
+    image: ghcr.io/krynce/sonm-backend/api:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      redis: { condition: service_started }
+      rabbit: { condition: service_healthy }
+      scheduler: { condition: service_started } # declares the sonm.default exchange
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      - traefik.http.routers.sonm-api.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/api`)
+      - traefik.http.routers.sonm-api.entrypoints=websecure
+      - traefik.http.routers.sonm-api.tls.certresolver=myresolver
+      - traefik.http.routers.sonm-api.middlewares=sonm-strip
+      - traefik.http.services.sonm-api.loadbalancer.server.port=14702
+      # Shared by every router below: drops the service prefix before proxying.
+      - traefik.http.middlewares.sonm-strip.stripprefix.prefixes=/api,/ws,/files,/autumn,/embeds,/january,/livekit
+
+  gateway:
+    <<: [*backend, *public]
+    image: ghcr.io/krynce/sonm-backend/gateway:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      redis: { condition: service_started }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      - traefik.http.routers.sonm-gateway.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/ws`)
+      - traefik.http.routers.sonm-gateway.entrypoints=websecure
+      - traefik.http.routers.sonm-gateway.tls.certresolver=myresolver
+      - traefik.http.routers.sonm-gateway.middlewares=sonm-strip
+      - traefik.http.services.sonm-gateway.loadbalancer.server.port=14703
+
+  files:
+    <<: [*backend, *public]
+    image: ghcr.io/krynce/sonm-backend/files:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      minio: { condition: service_started }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      # ponytail: /autumn — старые ссылки и вкладки старого клиента; убрать через пару недель
+      - traefik.http.routers.sonm-files.rule=Host(`${DOMAIN:?}`) && (PathPrefix(`/files`) || PathPrefix(`/autumn`))
+      - traefik.http.routers.sonm-files.entrypoints=websecure
+      - traefik.http.routers.sonm-files.tls.certresolver=myresolver
+      - traefik.http.routers.sonm-files.middlewares=sonm-strip
+      - traefik.http.services.sonm-files.loadbalancer.server.port=14704
+
+  embeds:
+    <<: [*backend, *public]
+    image: ghcr.io/krynce/sonm-backend/embeds:${BACKEND_TAG:?}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      # ponytail: /january — как /autumn выше
+      - traefik.http.routers.sonm-embeds.rule=Host(`${DOMAIN:?}`) && (PathPrefix(`/embeds`) || PathPrefix(`/january`))
+      - traefik.http.routers.sonm-embeds.entrypoints=websecure
+      - traefik.http.routers.sonm-embeds.tls.certresolver=myresolver
+      - traefik.http.routers.sonm-embeds.middlewares=sonm-strip
+      - traefik.http.services.sonm-embeds.loadbalancer.server.port=14705
+
+  push:
+    <<: *backend
+    image: ghcr.io/krynce/sonm-backend/push:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      redis: { condition: service_started }
+      rabbit: { condition: service_healthy }
+
+  voice:
+    <<: *backend
+    image: ghcr.io/krynce/sonm-backend/voice:${BACKEND_TAG:?}
+    depends_on:
+      database: { condition: service_healthy }
+      rabbit: { condition: service_healthy }
+
+  livekit:
+    <<: *public
+    image: ghcr.io/stoatchat/livekit-server:v1.9.14
+    command: --config /etc/livekit.yml
+    restart: always
+    depends_on: [redis]
+    ports:
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./livekit.yml:/etc/livekit.yml:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      - traefik.http.routers.sonm-livekit.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/livekit`)
+      - traefik.http.routers.sonm-livekit.entrypoints=websecure
+      - traefik.http.routers.sonm-livekit.tls.certresolver=myresolver
+      - traefik.http.routers.sonm-livekit.middlewares=sonm-strip
+      - traefik.http.services.sonm-livekit.loadbalancer.server.port=7880
+
+  web:
+    <<: *public
+    image: ghcr.io/krynce/sonm-web:${WEB_TAG:?}
+    restart: always
+    environment:
+      VITE_API_URL: https://${DOMAIN:?}/api
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy_net
+      - traefik.http.routers.sonm-web.rule=Host(`${DOMAIN:?}`)
+      - traefik.http.routers.sonm-web.entrypoints=websecure
+      - traefik.http.routers.sonm-web.tls.certresolver=myresolver
+      - traefik.http.services.sonm-web.loadbalancer.server.port=5000
+
+networks:
+  proxy_net:
+    external: true

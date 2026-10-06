@@ -57,7 +57,9 @@ Use `nextest` rather than `cargo test`: config overrides are process-global.
 
 ## Migrating from Revolt / Stoat
 
-Internal names changed: MongoDB database `revolt` → `sonm`, RabbitMQ exchanges `revolt.*` → `sonm.*`, S3 bucket `revolt-uploads` → `sonm-uploads`, config `Revolt.toml` → `Sonm.toml`, env prefix `REVOLT__` → `SONM__`. Stop all services and run [scripts/migrate-from-revolt.sh](scripts/migrate-from-revolt.sh).
+Production deploy and the Stoat → Sonm cutover runbook: [deploy/](deploy/MIGRATION.md).
+
+Internal names changed: MongoDB database `revolt` → `sonm` (or keep the old one with `database.name = "revolt"`), RabbitMQ exchanges `revolt.*` → `sonm.*`, S3 bucket `revolt-uploads` → `sonm-uploads`, config `Revolt.toml` → `Sonm.toml`, env prefix `REVOLT__` → `SONM__`. Stop all services and run [scripts/migrate-from-revolt.sh](scripts/migrate-from-revolt.sh).
 
 Mobile push (APNs/FCM) is not supported; only Web Push.
 

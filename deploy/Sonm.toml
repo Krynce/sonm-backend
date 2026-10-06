@@ -1,0 +1,36 @@
+# Non-secret production config. Secrets (VAPID, files key, LiveKit) live in secrets.env as SONM__*.
+# Replace chat.krynce.ru if the domain ever changes.
+
+[database]
+# Old Stoat data is reused in place; the rename to `sonm` comes with the move to dedicated servers.
+name = "revolt"
+
+[hosts]
+app = "https://chat.krynce.ru"
+api = "https://chat.krynce.ru/api"
+gateway = "wss://chat.krynce.ru/ws"
+files = "https://chat.krynce.ru/files"
+embeds = "https://chat.krynce.ru/embeds"
+
+[hosts.livekit]
+worldwide = "wss://chat.krynce.ru/livekit"
+
+[api.livekit.nodes.worldwide]
+url = "http://livekit:7880"
+lat = 0.0
+lon = 0.0
+
+[files.s3]
+access_key_id = "minioautumn"
+secret_access_key = "minioautumn"
+default_bucket = "revolt-uploads"
+
+# Copied from the generated Revolt.toml (camera and screen sharing enabled).
+# If Revolt.toml on the VPS has other custom sections, carry them over too.
+[features.limits.new_user]
+video_resolution = [1920, 1080]
+video_aspect_ratio = [0.3, 10]
+
+[features.limits.default]
+video_resolution = [1920, 1080]
+video_aspect_ratio = [0.3, 10]

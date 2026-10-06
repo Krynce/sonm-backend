@@ -44,7 +44,7 @@ Done. Before starting Sonm services:
     hosts keys events/autumn/january -> gateway/files/embeds;
     sentry keys events/proxy/pushd/crond/gifbox/voice_ingress -> gateway/embeds/push/scheduler/(removed)/voice;
     remove [pushd.fcm], [pushd.apn], ack_queue and voso_legacy*
-  * set files.s3.default_bucket = "$NEW_BUCKET"
+  * set database.name = "$NEW_DB" and files.s3.default_bucket = "$NEW_BUCKET"
   * if you overrode rabbit.default_exchange or pushd.exchange, change them to sonm.default / sonm.notifications
   * RabbitMQ: let the old services drain queues bound to revolt.default / revolt.notifications;
     Sonm declares sonm.default / sonm.notifications on start. Old exchanges can then be deleted.
