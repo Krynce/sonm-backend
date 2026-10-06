@@ -9,7 +9,7 @@ use rocket::{Data, Request, Response, State};
 
 use revolt_rocket_okapi::r#gen::OpenApiGenerator;
 use revolt_rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
-use revolt_database::{Session, util::ip::rocket::to_real_ip};
+use sonm_database::{Session, util::ip::rocket::to_real_ip};
 
 use crate::ratelimiter::RequestKind;
 use crate::ratelimiter::{RatelimitInformation, Ratelimiter};

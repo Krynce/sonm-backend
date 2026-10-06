@@ -11,10 +11,10 @@ use lapin::{
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable},
 };
-use revolt_config::config;
-use revolt_models::v0::PushNotification;
-use revolt_presence::filter_online;
-use revolt_result::Result;
+use sonm_config::config;
+use sonm_models::v0::PushNotification;
+use sonm_presence::filter_online;
+use sonm_result::Result;
 
 use serde_json::to_string;
 
@@ -31,7 +31,6 @@ pub struct AMQP {
     generic_message: Arc<Channel>,
     message_sent: Arc<Channel>,
     mass_mention_message_sent: Arc<Channel>,
-    ack_notification_message: Arc<Channel>,
     dm_call_updated: Arc<Channel>,
     process_ack: Arc<Channel>,
     publish_event: Arc<Channel>,
@@ -47,7 +46,6 @@ impl AMQP {
             generic_message: Self::create_channel(&connection).await,
             message_sent: Self::create_channel(&connection).await,
             mass_mention_message_sent: Self::create_channel(&connection).await,
-            ack_notification_message: Self::create_channel(&connection).await,
             dm_call_updated: Self::create_channel(&connection).await,
             process_ack: Self::create_channel(&connection).await,
             publish_event: Self::create_channel(&connection).await,
@@ -60,7 +58,7 @@ impl AMQP {
     }
 
     pub async fn new_auto() -> Self {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let connection = Arc::new(
             Connection::connect(
@@ -98,7 +96,7 @@ impl AMQP {
         accepted_request_user: &User,
         sent_request_user: &User,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
         let payload = FRAcceptedPayload {
             accepted_user: accepted_request_user.to_owned(),
             user: sent_request_user.id.clone(),
@@ -107,14 +105,14 @@ impl AMQP {
 
         debug!(
             "Sending friend request accept payload on channel {}: {}",
-            config.pushd.get_fr_accepted_routing_key(),
+            config.push.get_fr_accepted_routing_key(),
             payload
         );
 
         self.friend_request_accepted
             .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.get_fr_accepted_routing_key().into(),
+                config.push.exchange.clone().into(),
+                config.push.get_fr_accepted_routing_key().into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -131,7 +129,7 @@ impl AMQP {
         received_request_user: &User,
         sent_request_user: &User,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
         let payload = FRReceivedPayload {
             from_user: sent_request_user.to_owned(),
             user: received_request_user.id.clone(),
@@ -140,14 +138,14 @@ impl AMQP {
 
         debug!(
             "Sending friend request received payload on channel {}: {}",
-            config.pushd.get_fr_received_routing_key(),
+            config.push.get_fr_received_routing_key(),
             payload
         );
 
         self.friend_request_received
             .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.get_fr_received_routing_key().into(),
+                config.push.exchange.clone().into(),
+                config.push.get_fr_received_routing_key().into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -166,7 +164,7 @@ impl AMQP {
         body: String,
         icon: Option<String>,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
         let payload = GenericPayload {
             title,
             body,
@@ -177,14 +175,14 @@ impl AMQP {
 
         debug!(
             "Sending generic payload on channel {}: {}",
-            config.pushd.get_generic_routing_key(),
+            config.push.get_generic_routing_key(),
             payload
         );
 
         self.generic_message
             .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.get_generic_routing_key().into(),
+                config.push.exchange.clone().into(),
+                config.push.get_generic_routing_key().into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -205,7 +203,7 @@ impl AMQP {
             return Ok(());
         }
 
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let online_ids = filter_online(&recipients).await;
         let recipients = (&recipients.into_iter().collect::<HashSet<String>>() - &online_ids)
@@ -220,14 +218,14 @@ impl AMQP {
 
         debug!(
             "Sending message payload on channel {}: {}",
-            config.pushd.get_message_routing_key(),
+            config.push.get_message_routing_key(),
             payload
         );
 
         self.message_sent
             .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.get_message_routing_key().into(),
+                config.push.exchange.clone().into(),
+                config.push.get_message_routing_key().into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -244,7 +242,7 @@ impl AMQP {
         server_id: String,
         payload: Vec<PushNotification>,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let payload = MassMessageSentPayload {
             notifications: payload,
@@ -252,7 +250,7 @@ impl AMQP {
         };
         let payload = to_string(&payload).unwrap();
 
-        let routing_key = config.pushd.get_mass_mention_routing_key();
+        let routing_key = config.push.get_mass_mention_routing_key();
 
         debug!(
             "Sending mass mention payload on channel {}: {}",
@@ -261,51 +259,8 @@ impl AMQP {
 
         self.mass_mention_message_sent
             .basic_publish(
-                config.pushd.exchange.clone().into(),
+                config.push.exchange.clone().into(),
                 routing_key.into(),
-                BasicPublishOptions::default(),
-                payload.as_bytes(),
-                AMQPProperties::default()
-                    .with_content_type("application/json".into())
-                    .with_delivery_mode(2),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    /// # Sends an ack to pushd to update badges on iPhones.
-    /// Not to be confused with the process_ack function, which handles sending all acks to crond for processing.
-    pub async fn ack_notification_message(
-        &self,
-        user_id: String,
-        channel_id: String,
-        message_id: String,
-    ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
-
-        let payload = AckPayload {
-            user_id: user_id.clone(),
-            channel_id: channel_id.clone(),
-            message_id,
-        };
-        let payload = to_string(&payload).unwrap();
-
-        info!(
-            "Sending ack payload on channel {}: {}",
-            config.pushd.ack_queue, payload
-        );
-
-        let mut headers = FieldTable::default();
-        headers.insert(
-            "x-deduplication-header".into(),
-            AMQPValue::LongString(format!("{}-{}", &user_id, &channel_id).into()),
-        );
-
-        self.ack_notification_message
-            .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.ack_queue.into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -329,7 +284,7 @@ impl AMQP {
         ended: bool,
         recipients: Option<Vec<String>>,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let payload = InternalDmCallPayload {
             payload: DmCallPayload {
@@ -344,14 +299,14 @@ impl AMQP {
 
         debug!(
             "Sending dm call update payload on channel {}: {}",
-            config.pushd.get_dm_call_routing_key(),
+            config.push.get_dm_call_routing_key(),
             payload
         );
 
         self.dm_call_updated
             .basic_publish(
-                config.pushd.exchange.clone().into(),
-                config.pushd.get_dm_call_routing_key().into(),
+                config.push.exchange.clone().into(),
+                config.push.get_dm_call_routing_key().into(),
                 BasicPublishOptions::default(),
                 payload.as_bytes(),
                 AMQPProperties::default()
@@ -363,14 +318,14 @@ impl AMQP {
         Ok(())
     }
 
-    /// # Send an ack to crond for processing
+    /// # Send an ack to the scheduler for processing
     pub async fn process_ack(
         &self,
         user_id: &str,
         channel_id: Option<&str>,
         server_id: Option<&str>,
     ) -> Result<(), AMQPError> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let payload = AckEventPayload {
             user_id: user_id.to_string(),

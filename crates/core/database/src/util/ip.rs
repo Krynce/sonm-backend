@@ -1,7 +1,7 @@
 #[cfg(feature = "rocket-impl")]
 pub mod rocket {
-    use revolt_config::config;
     use rocket::Request;
+    use sonm_config::config;
 
     pub fn to_ip(request: &'_ Request<'_>) -> String {
         request
@@ -26,11 +26,8 @@ pub mod rocket {
 
 #[cfg(feature = "axum-impl")]
 pub mod axum {
-    use axum::{
-        extract::ConnectInfo,
-        http::request::Parts,
-    };
-    use revolt_config::config;
+    use axum::{extract::ConnectInfo, http::request::Parts};
+    use sonm_config::config;
     use std::net::SocketAddr;
 
     pub fn to_ip(parts: &Parts) -> String {

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run embeds (link preview) service"
+set -e
+
+cargo run --bin sonm-embeds

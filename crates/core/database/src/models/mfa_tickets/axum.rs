@@ -3,7 +3,7 @@ use axum::{
     http::request::Parts,
 };
 
-use revolt_result::{Error, Result};
+use sonm_result::{Error, Result};
 
 use crate::{Database, MFATicket, Session, UnvalidatedTicket, ValidatedTicket};
 

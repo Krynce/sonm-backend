@@ -1,10 +1,8 @@
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::{MemberCompositeKey, ServerBan};
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[async_trait]
 pub trait AbstractServerBans: Sync + Send {

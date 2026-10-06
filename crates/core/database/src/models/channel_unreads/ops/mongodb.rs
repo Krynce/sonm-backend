@@ -2,7 +2,7 @@ use bson::Document;
 use mongodb::options::FindOneAndUpdateOptions;
 use mongodb::options::ReturnDocument;
 use mongodb::options::UpdateOptions;
-use revolt_result::Result;
+use sonm_result::Result;
 use ulid::Ulid;
 
 use crate::ChannelUnread;

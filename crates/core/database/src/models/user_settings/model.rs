@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{events::client::EventV1, Database};
+use crate::{Database, events::client::EventV1};
 
-use revolt_result::Result;
+use sonm_result::Result;
 
 pub type UserSettings = HashMap<String, (i64, String)>;
 

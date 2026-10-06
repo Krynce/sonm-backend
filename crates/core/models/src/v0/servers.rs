@@ -1,6 +1,6 @@
 use super::{Channel, File, RE_COLOUR};
 
-use revolt_permissions::{Override, OverrideField};
+use sonm_permissions::{Override, OverrideField};
 use std::collections::HashMap;
 
 #[cfg(feature = "validator")]
@@ -114,7 +114,7 @@ auto_derived_partial!(
         pub icon: Option<File>,
         /// Id of the bot that owns this role, if it is a managed role
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        pub owner: Option<String>
+        pub owner: Option<String>,
     },
     "PartialRole"
 );
@@ -255,11 +255,11 @@ auto_derived!(
 
         // Whether this server is age-restricted
         // nsfw: Option<bool>,
-        /// Whether this server is public and should show up on [Revolt Discover](https://rvlt.gg)
+        /// Whether this server is public and should show up on Discover
         pub discoverable: Option<bool>,
         /// Whether analytics should be collected for this server
         ///
-        /// Must be enabled in order to show up on [Revolt Discover](https://rvlt.gg).
+        /// Must be enabled in order to show up on Discover.
         pub analytics: Option<bool>,
 
         /// User id of the new owner
@@ -290,7 +290,7 @@ auto_derived!(
         pub rank: Option<i64>,
         /// Role icon
         ///
-        /// Provide an Autumn attachment Id.
+        /// Provide an uploaded file id.
         #[cfg_attr(feature = "validator", validate(length(min = 1, max = 128)))]
         pub icon: Option<String>,
         /// Fields to remove from role object

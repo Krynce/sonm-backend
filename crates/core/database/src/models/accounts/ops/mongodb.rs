@@ -5,7 +5,7 @@ use mongodb::options::{
     Collation, CollationStrength, FindOneAndUpdateOptions, FindOneOptions, ReturnDocument,
     UpdateOptions,
 };
-use revolt_result::Result;
+use sonm_result::Result;
 
 const COL: &str = "accounts";
 

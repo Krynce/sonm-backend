@@ -1,11 +1,11 @@
 [package]
-name = "revolt-presence"
-version = "0.15.5"
+name = "sonm-presence"
+version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 authors = ["Paul Makles <me@insrt.uk>"]
-description = "Revolt Backend: User Presence"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: User Presence"
+repository = "https://github.com/krynce/sonm-backend"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,7 +17,7 @@ redis-is-patched = []
 tokio = { workspace = true }
 
 # Config for loading Redis URI
-revolt-config = { workspace = true }
+sonm-config = { workspace = true }
 
 [dependencies]
 # Utility

@@ -21,11 +21,16 @@ RUN sh /tmp/build-image-layer.sh tools
 
 # Build all dependencies
 COPY Cargo.toml Cargo.lock ./
-COPY crates/bonfire/Cargo.toml ./crates/bonfire/
-COPY crates/delta/Cargo.toml ./crates/delta/
+COPY crates/api/Cargo.toml ./crates/api/
+COPY crates/gateway/Cargo.toml ./crates/gateway/
+COPY crates/files/Cargo.toml ./crates/files/
+COPY crates/embeds/Cargo.toml ./crates/embeds/
+COPY crates/scheduler/Cargo.toml ./crates/scheduler/
+COPY crates/push/Cargo.toml ./crates/push/
+COPY crates/voice/Cargo.toml ./crates/voice/
 COPY crates/core/config/Cargo.toml ./crates/core/config/
 COPY crates/core/database/Cargo.toml ./crates/core/database/
-COPY crates/core/files/Cargo.toml ./crates/core/files/
+COPY crates/core/storage/Cargo.toml ./crates/core/storage/
 COPY crates/core/models/Cargo.toml ./crates/core/models/
 COPY crates/core/parser/Cargo.toml ./crates/core/parser/
 COPY crates/core/permissions/Cargo.toml ./crates/core/permissions/
@@ -33,12 +38,6 @@ COPY crates/core/presence/Cargo.toml ./crates/core/presence/
 COPY crates/core/result/Cargo.toml ./crates/core/result/
 COPY crates/core/coalesced/Cargo.toml ./crates/core/coalesced/
 COPY crates/core/ratelimits/Cargo.toml ./crates/core/ratelimits/
-COPY crates/services/autumn/Cargo.toml ./crates/services/autumn/
-COPY crates/services/january/Cargo.toml ./crates/services/january/
-COPY crates/services/gifbox/Cargo.toml ./crates/services/gifbox/
-COPY crates/daemons/crond/Cargo.toml ./crates/daemons/crond/
-COPY crates/daemons/pushd/Cargo.toml ./crates/daemons/pushd/
-COPY crates/daemons/voice-ingress/Cargo.toml ./crates/daemons/voice-ingress/
 RUN sh /tmp/build-image-layer.sh deps
 
 # Build all apps

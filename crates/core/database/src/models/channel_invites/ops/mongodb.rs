@@ -1,7 +1,7 @@
-use bson::{Document};
+use bson::Document;
 use futures::StreamExt;
 use mongodb::options::ReturnDocument;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::Invite;
 use crate::MongoDb;

@@ -1,38 +1,36 @@
 [package]
-name = "revolt-database"
-version = "0.15.5"
+name = "sonm-database"
+version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 authors = ["Paul Makles <me@insrt.uk>"]
-description = "Revolt Backend: Database Implementation"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: Database Implementation"
+repository = "https://github.com/krynce/sonm-backend"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
 # Databases
-mongodb = ["dep:mongodb", "bson"]
 
 # ... Other
 tasks = ["isahc", "linkify", "url-escape"]
 tokio-runtime = ["tokio"]
 rocket-impl = ["rocket", "schemars", "revolt_okapi", "revolt_rocket_okapi"]
-axum-impl = ["axum", "revolt-result/axum", "utoipa"]
-redis-is-patched = ["revolt-presence/redis-is-patched"]
+axum-impl = ["axum", "sonm-result/axum", "utoipa"]
+redis-is-patched = ["sonm-presence/redis-is-patched"]
 voice = ["livekit-api", "livekit-protocol", "livekit-runtime"]
 
 # Default Features
-default = ["mongodb", "tokio-runtime", "tasks"]
+default = ["tokio-runtime", "tasks"]
 
 [dependencies]
 # Core
-revolt-config = { workspace = true, features = ["report-macros"] }
-revolt-result = { workspace = true }
-revolt-models = { workspace = true, features = ["validator"] }
-revolt-presence = { workspace = true }
-revolt-permissions = { workspace = true, features = ["serde", "bson"] }
-revolt-parser = { workspace = true }
-revolt-coalesced = { workspace = true }
+sonm-config = { workspace = true, features = ["report-macros"] }
+sonm-result = { workspace = true }
+sonm-models = { workspace = true, features = ["validator"] }
+sonm-presence = { workspace = true }
+sonm-permissions = { workspace = true, features = ["serde", "bson"] }
+sonm-parser = { workspace = true }
 
 # Utility
 log = { workspace = true }
@@ -65,8 +63,8 @@ redis-kiss = { workspace = true, default-features = false, features = [
 ] }
 
 # Database
-bson = { workspace = true, optional = true }
-mongodb = { workspace = true, optional = true }
+bson = { workspace = true }
+mongodb = { workspace = true }
 
 # Database Migration
 unicode-segmentation = { workspace = true }

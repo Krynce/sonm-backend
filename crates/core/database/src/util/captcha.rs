@@ -1,6 +1,6 @@
 use reqwest::Client;
-use revolt_config::config;
-use revolt_result::Result;
+use sonm_config::config;
+use sonm_result::Result;
 use std::sync::LazyLock;
 
 static CLIENT: LazyLock<Client> = LazyLock::new(Client::new);

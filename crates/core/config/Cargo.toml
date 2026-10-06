@@ -1,17 +1,17 @@
 [package]
-name = "revolt-config"
-version = "0.15.5"
+name = "sonm-config"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 authors = ["Paul Makles <me@insrt.uk>"]
-description = "Revolt Backend: Configuration"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: Configuration"
+repository = "https://github.com/krynce/sonm-backend"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
 anyhow = ["dep:sentry-anyhow"]
-report-macros = ["revolt-result"]
+report-macros = ["sonm-result"]
 sentry = ["dep:sentry"]
 test = ["tokio"]
 default = ["sentry"]
@@ -37,4 +37,4 @@ sentry = { workspace = true, optional = true }
 sentry-anyhow = { workspace = true, optional = true }
 
 # Core
-revolt-result = { workspace = true, optional = true }
+sonm-result = { workspace = true, optional = true }

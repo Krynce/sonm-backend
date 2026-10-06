@@ -1,10 +1,8 @@
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::UserSettings;
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[async_trait]
 pub trait AbstractUserSettings: Sync + Send {

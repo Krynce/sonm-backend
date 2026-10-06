@@ -1,218 +1,66 @@
-<div align="center">
-<h1>
-  Stoat Backend
-  
-  [![Stars](https://img.shields.io/github/stars/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/stargazers)
-  [![Forks](https://img.shields.io/github/forks/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/network/members)
-  [![Pull Requests](https://img.shields.io/github/issues-pr/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/pulls)
-  [![Issues](https://img.shields.io/github/issues/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/issues)
-  [![Contributors](https://img.shields.io/github/contributors/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/graphs/contributors)
-  [![License](https://img.shields.io/github/license/stoatchat/stoatchat?style=flat-square&logoColor=white)](https://github.com/stoatchat/stoatchat/blob/main/LICENSE)
-</h1>
-The services and libraries that power the Stoat service.<br/>
-<br/>
+# Sonm Backend
 
-| Crate              | Path                                               | Description                         |                                                                                                                                                                                                                                                                                                           |
-| ------------------ | -------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core/config`      | [crates/core/config](crates/core/config)           | Core: Configuration                 | ![Crates.io Version](https://img.shields.io/crates/v/revolt-config) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-config) ![Crates.io Version](https://img.shields.io/crates/size/revolt-config) ![Crates.io License](https://img.shields.io/crates/l/revolt-config)                     |
-| `core/database`    | [crates/core/database](crates/core/database)       | Core: Database Implementation       | ![Crates.io Version](https://img.shields.io/crates/v/revolt-database) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-database) ![Crates.io Version](https://img.shields.io/crates/size/revolt-database) ![Crates.io License](https://img.shields.io/crates/l/revolt-database)             |
-| `core/files`       | [crates/core/files](crates/core/files)             | Core: S3 and encryption subroutines | ![Crates.io Version](https://img.shields.io/crates/v/revolt-files) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-files) ![Crates.io Version](https://img.shields.io/crates/size/revolt-files) ![Crates.io License](https://img.shields.io/crates/l/revolt-files)                         |
-| `core/models`      | [crates/core/models](crates/core/models)           | Core: API Models                    | ![Crates.io Version](https://img.shields.io/crates/v/revolt-models) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-models) ![Crates.io Version](https://img.shields.io/crates/size/revolt-models) ![Crates.io License](https://img.shields.io/crates/l/revolt-models)                     |
-| `core/permissions` | [crates/core/permissions](crates/core/permissions) | Core: Permission Logic              | ![Crates.io Version](https://img.shields.io/crates/v/revolt-permissions) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-permissions) ![Crates.io Version](https://img.shields.io/crates/size/revolt-permissions) ![Crates.io License](https://img.shields.io/crates/l/revolt-permissions) |
-| `core/presence`    | [crates/core/presence](crates/core/presence)       | Core: User Presence                 | ![Crates.io Version](https://img.shields.io/crates/v/revolt-presence) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-presence) ![Crates.io Version](https://img.shields.io/crates/size/revolt-presence) ![Crates.io License](https://img.shields.io/crates/l/revolt-presence)             |
-| `core/result`      | [crates/core/result](crates/core/result)           | Core: Result and Error types        | ![Crates.io Version](https://img.shields.io/crates/v/revolt-result) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-result) ![Crates.io Version](https://img.shields.io/crates/size/revolt-result) ![Crates.io License](https://img.shields.io/crates/l/revolt-result)                     |
-| `core/coalesced`   | [crates/core/coalesced](crates/core/coalesced)     | Core: Coalescion service            | ![Crates.io Version](https://img.shields.io/crates/v/revolt-coalesced) ![Crates.io Version](https://img.shields.io/crates/msrv/revolt-coalesced) ![Crates.io Version](https://img.shields.io/crates/size/revolt-coalesced) ![Crates.io License](https://img.shields.io/crates/l/revolt-coalesced)         |
-| `delta`            | [crates/delta](crates/delta)                       | REST API server                     | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `bonfire`          | [crates/bonfire](crates/bonfire)                   | WebSocket events server             | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `services/january` | [crates/services/january](crates/services/january) | Proxy server                        | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `services/gifbox`  | [crates/services/gifbox](crates/services/gifbox)   | Tenor proxy server                  | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `services/autumn`  | [crates/services/autumn](crates/services/autumn)   | File server                         | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `daemons/crond`    | [crates/daemons/crond](crates/daemons/crond)       | Timed data clean up daemon server   | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
-| `daemons/pushd`    | [crates/daemons/pushd](crates/daemons/pushd)       | Push notification daemon server     | ![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)                                                                                                                                                                                                                                |
+Services and libraries that power Sonm. Based on [Revolt / Stoat](https://github.com/stoatchat/stoatchat); the REST and WebSocket APIs stay compatible with the Stoat web client.
 
-</div>
-<br/>
+## Layout
 
-## Minimum Supported Rust Version
+| Crate | Path | What it does | Port |
+|---|---|---|---|
+| `sonm-api` | [crates/api](crates/api) | REST API (Rocket) | 14702 |
+| `sonm-gateway` | [crates/gateway](crates/gateway) | WebSocket events gateway | 14703 |
+| `sonm-files` | [crates/files](crates/files) | File uploads and serving (S3) | 14704 |
+| `sonm-embeds` | [crates/embeds](crates/embeds) | Link previews and media proxy | 14705 |
+| `sonm-scheduler` | [crates/scheduler](crates/scheduler) | Timed clean-up jobs and ack processing | — |
+| `sonm-push` | [crates/push](crates/push) | Web Push notifications (RabbitMQ consumer) | — |
+| `sonm-voice` | [crates/voice](crates/voice) | LiveKit webhook receiver | 8500 |
 
-Rust 1.86.0 or higher.
+Shared libraries live in `crates/core/*`: `config`, `database` (MongoDB), `models` (API types), `result` (errors), `permissions`, `presence`, `ratelimits`, `parser`, `storage` (S3 + encryption), `coalesced`.
 
-## Development Guide
+Docker images: `ghcr.io/krynce/sonm-backend/<service>`, built by [.github/workflows/docker.yaml](.github/workflows/docker.yaml) on tag push.
 
-Before contributing, make yourself familiar with [our contribution guidelines](https://developers.stoat.chat/developing/contrib/) and the [technical documentation for this project](https://developers.stoat.chat/).
+## Development
 
-Before getting started, you'll want to install:
-
-- mise
-- Docker
-- Git
-- mold (optional, faster compilation)
-
-> **Flake** is available for Nix users! Run `nix develop` to enter the dev shell.
-
-As a heads-up, the development environment uses the following ports:
-
-| Service                   |      Port      |
-| ------------------------- | :------------: |
-| MongoDB                   |     27017      |
-| Redis                     |      6379      |
-| MinIO                     |     14009      |
-| Maildev                   | 14025<br>14080 |
-| Revolt Web App            |     14701      |
-| RabbitMQ                  | 5672<br>15672  |
-| `crates/delta`            |     14702      |
-| `crates/bonfire`          |     14703      |
-| `crates/services/autumn`  |     14704      |
-| `crates/services/january` |     14705      |
-| `crates/services/gifbox`  |     14706      |
-
-Now you can clone and build the project:
+Requires [mise](https://mise.jdx.dev) and Docker.
 
 ```bash
-git clone https://github.com/stoatchat/stoatchat stoat-backend
-cd stoat-backend
 mise install
-mise build
-```
-
-> [!TIP]
-> You can override `BUILDER` in your `.env` file to run cargo with mold if you installed it:
->
-> ```bash
-> # .env
-> BUILDER = "mold --run cargo"
-> ```
-
-A default configuration `Revolt.toml` is present in this project that is suited for development.
-
-If you'd like to change anything, create a `Revolt.overrides.toml` file and specify relevant variables.
-
-> [!TIP]
-> Use Sentry to catch unexpected service errors:
->
-> ```toml
-> # Revolt.overrides.toml
-> [sentry]
-> api = "https://abc@your.sentry/1"
-> events = "https://abc@your.sentry/1"
-> files = "https://abc@your.sentry/1"
-> proxy = "https://abc@your.sentry/1"
-> ```
-
-> [!TIP]
-> If you have port conflicts on common services, you can try the following:
->
-> ```yaml
-> # compose.override.yml
-> services:
->   redis:
->     ports: !override
->       - "14079:6379"
->
->   database:
->     ports: !override
->       - "14017:27017"
->
->   rabbit:
->     ports: !override
->       - "14072:5672"
->       - "14672:15672"
-> ```
->
-> With the corresponding Revolt configuration:
->
-> ```toml
-> #     Revolt.overrides.toml
-> # and Revolt.test-overrides.toml
-> [database]
-> mongodb = "mongodb://127.0.0.1:14017"
-> redis = "redis://127.0.0.1:14079/"
->
-> [rabbit]
-> port = 14072
-> ```
->
-> And mise configuration
->
-> ```bash
-> #.env
-> DATABASE_PORT = "14017"
-> RABBIT_PORT = "14072"
-> REDIS_PORT = "14079"
-> ```
-
-Then continue:
-
-```bash
 cp livekit.example.yml livekit.yml
-
-mise start
+mise start          # docker services + all Sonm services
 ```
 
-You can start a web client by doing the following in another terminal:
+Development dependencies (from `compose.yml`):
+
+| Service | Port |
+|---|---|
+| MongoDB | 27017 |
+| Redis (KeyDB) | 6379 |
+| S3 (MinIO-compatible) | 14009, console 14010 |
+| RabbitMQ | 5672, UI 15672 |
+| Maildev | SMTP 14025, UI 14080 |
+
+Run a single service: `mise service:api`, `mise service:gateway`, … Stop containers: `mise docker:stop`.
+
+### Configuration
+
+Defaults are in `crates/core/config/Sonm.toml`; `Sonm.toml` in the repo root holds dev overrides. Put local changes in `Sonm.overrides.toml` (git-ignored). Any key can be set from the environment with the `SONM__` prefix, e.g. `SONM__DATABASE__MONGODB=mongodb://db`.
+
+For the web client, point it at `http://localhost:14702` (API) and `ws://localhost:14703` (gateway).
+
+### Tests
 
 ```bash
-# if you do not have yarn yet and have a modern Node.js:
-corepack enable
-
-# clone the web client and run it:
-git clone --recursive https://github.com/stoatchat/for-web stoat-web
-cd stoat-web
-# refer to stoat-web/README.md for startup, creating an account and loging in
+mise docker:start
+mise test           # cargo nextest, TEST_DB=MONGODB
 ```
 
-When signing up, go to http://localhost:14080 to find confirmation/password reset emails.
+Use `nextest` rather than `cargo test`: config overrides are process-global.
 
-To stop all services, hit (CTRL + c) in the terminal you ran `mise start` and run `mise docker:stop`
+## Migrating from Revolt / Stoat
 
+Internal names changed: MongoDB database `revolt` → `sonm`, RabbitMQ exchanges `revolt.*` → `sonm.*`, S3 bucket `revolt-uploads` → `sonm-uploads`, config `Revolt.toml` → `Sonm.toml`, env prefix `REVOLT__` → `SONM__`. Stop all services and run [scripts/migrate-from-revolt.sh](scripts/migrate-from-revolt.sh).
 
-## Deployment Guide
-
-### Cutting new crate releases
-
-Begin by bumping crate versions:
-
-```bash
-just patch # 0.0.X
-just minor # 0.X.0
-just major # X.0.0
-```
-
-Then commit the changes to package files.
-
-Proceed to publish all the new crates:
-
-```bash
-just publish
-```
-
-### Cutting new binary releases
-
-Tag and push a new release by running:
-
-```bash
-just release
-```
-
-If you have bumped the crate versions, proceed to [GitHub releases](https://github.com/stoatchat/stoatchat/releases/new) to create a changelog.
-
-## Testing
-
-First, start the required services:
-
-```sh
-docker compose up -d
-```
-
-Now run tests for whichever database:
-
-```sh
-TEST_DB=REFERENCE cargo nextest run
-TEST_DB=MONGODB cargo nextest run
-```
+Mobile push (APNs/FCM) is not supported; only Web Push.
 
 ## License
 
-The Stoat backend is generally licensed under the [GNU Affero General Public License v3.0](https://github.com/stoatchat/stoatchat/blob/main/LICENSE).
-
-**Individual crates may supply their own licenses!**
+AGPL-3.0-or-later ([LICENSE](LICENSE)), except crates that carry their own MIT `LICENSE` file. Original copyright notices are kept.

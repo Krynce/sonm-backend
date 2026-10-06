@@ -14,14 +14,12 @@ extern crate log;
 extern crate revolt_optional_struct;
 
 #[macro_use]
-extern crate revolt_result;
+extern crate sonm_result;
 
 pub use iso8601_timestamp;
 
-#[cfg(feature = "mongodb")]
 pub use mongodb;
 
-#[cfg(feature = "mongodb")]
 #[macro_use]
 extern crate bson;
 
@@ -42,7 +40,7 @@ macro_rules! query {
     ( $self: ident, $type: ident, $collection: expr, $($rest:expr),+ ) => {
         $self.$type($collection, $($rest),+).await
             .map_err(|err| {
-                revolt_config::capture_internal_error!(err);
+                sonm_config::capture_internal_error!(err);
                 create_database_error!(stringify!($type), $collection)
             })
     };
@@ -164,10 +162,14 @@ macro_rules! database_test {
         .await
         .expect("Database connection failed.");
 
-        $crate::AMQP::new_auto().await
-        .connection().create_channel().await
-        .expect("channel").exchange_declare(
-                "revolt.default".into(),
+        $crate::AMQP::new_auto()
+            .await
+            .connection()
+            .create_channel()
+            .await
+            .expect("channel")
+            .exchange_declare(
+                "sonm.default".into(),
                 ExchangeKind::Topic,
                 ExchangeDeclareOptions {
                     durable: true,

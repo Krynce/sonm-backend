@@ -1,10 +1,10 @@
 use iso8601_timestamp::Timestamp;
-use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
-use revolt_result::{create_error, Result};
+use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_result::{Result, create_error};
 
 use crate::{
-    events::client::EventV1, util::permissions::DatabasePermissionQuery, Channel, Database, File,
-    Server, SystemMessage, User,
+    Channel, Database, File, Server, SystemMessage, User, events::client::EventV1,
+    util::permissions::DatabasePermissionQuery,
 };
 
 fn default_true() -> bool {
@@ -341,18 +341,14 @@ impl Member {
 
 #[cfg(test)]
 mod tests {
-    use iso8601_timestamp::{Duration, Timestamp};
-    use revolt_models::v0::DataCreateServer;
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
     use crate::{Member, PartialMember, RemovalIntention, Server, User};
+    use iso8601_timestamp::{Duration, Timestamp};
+    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
+    use sonm_models::v0::DataCreateServer;
 
     #[tokio::test]
     async fn muted_member_rejoin() {
         database_test!(|db| async move {
-            match db {
-                crate::Database::Reference(_) => return,
-                crate::Database::MongoDb(_) => (),
-            }
             let owner = User::create(&db, "ServerOwner".to_string(), None, None)
                 .await
                 .unwrap();

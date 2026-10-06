@@ -23,7 +23,7 @@ macro_rules! report_error {
                     $crate::Level::Error,
                 );
             })
-            .map_err(|_| ::revolt_result::create_error!($error))
+            .map_err(|_| ::sonm_result::create_error!($error))
     };
 }
 
@@ -49,28 +49,28 @@ macro_rules! report_internal_error {
                     $crate::Level::Error,
                 );
             })
-            .map_err(|_| ::revolt_result::create_error!(InternalError))
+            .map_err(|_| ::sonm_result::create_error!(InternalError))
     };
 }
 
 /// Paths to search for configuration
 static CONFIG_SEARCH_PATHS: [&str; 3] = [
     // current working directory
-    "Revolt.toml",
+    "Sonm.toml",
     // current working directory - overrides file
-    "Revolt.overrides.toml",
+    "Sonm.overrides.toml",
     // root directory, for Docker containers
-    "/Revolt.toml",
+    "/Sonm.toml",
 ];
 
 /// Path to search for test overrides
-static TEST_OVERRIDE_PATH: &str = "Revolt.test-overrides.toml";
+static TEST_OVERRIDE_PATH: &str = "Sonm.test-overrides.toml";
 
 /// Configuration builder
 static CONFIG_BUILDER: LazyLock<RwLock<Config>> = LazyLock::new(|| {
     RwLock::new({
         let mut builder = Config::builder().add_source(File::from_str(
-            include_str!("../Revolt.toml"),
+            include_str!("../Sonm.toml"),
             FileFormat::Toml,
         ));
 
@@ -91,7 +91,7 @@ static CONFIG_BUILDER: LazyLock<RwLock<Config>> = LazyLock::new(|| {
 
         if std::env::var("TEST_DB").is_ok() {
             builder = builder.add_source(File::from_str(
-                include_str!("../Revolt.test.toml"),
+                include_str!("../Sonm.test.toml"),
                 FileFormat::Toml,
             ));
 
@@ -110,7 +110,7 @@ static CONFIG_BUILDER: LazyLock<RwLock<Config>> = LazyLock::new(|| {
             }
         }
 
-        builder = builder.add_source(Environment::with_prefix("REVOLT").separator("__"));
+        builder = builder.add_source(Environment::with_prefix("SONM").separator("__"));
 
         builder.build().unwrap()
     })
@@ -119,6 +119,7 @@ static CONFIG_BUILDER: LazyLock<RwLock<Config>> = LazyLock::new(|| {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Database {
     pub mongodb: String,
+    pub name: String,
     pub redis: String,
     pub redis_pubsub: Option<String>,
 }
@@ -143,9 +144,9 @@ pub struct Rabbit {
 pub struct Hosts {
     pub app: String,
     pub api: String,
-    pub events: String,
-    pub autumn: String,
-    pub january: String,
+    pub gateway: String,
+    pub files: String,
+    pub embeds: String,
     pub livekit: HashMap<String, String>,
     pub assets: String,
 }
@@ -187,30 +188,6 @@ pub struct PushVapid {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct PushFcm {
-    pub queue: String,
-    pub key_type: String,
-    pub project_id: String,
-    pub private_key_id: String,
-    pub private_key: String,
-    pub client_email: String,
-    pub client_id: String,
-    pub auth_uri: String,
-    pub token_uri: String,
-    pub auth_provider_x509_cert_url: String,
-    pub client_x509_cert_url: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct PushApn {
-    pub queue: String,
-    pub sandbox: bool,
-    pub pkcs8: String,
-    pub key_id: String,
-    pub team_id: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
 pub struct ApiSecurityCaptcha {
     pub hcaptcha_key: String,
     pub hcaptcha_sitekey: String,
@@ -228,7 +205,6 @@ pub struct ApiSecurity {
     pub captcha: ApiSecurityCaptcha,
     pub trust_cloudflare: bool,
     pub easypwned: String,
-    pub tenor_key: String,
     pub admin_keys: Vec<String>,
 }
 
@@ -280,7 +256,7 @@ pub struct Api {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Pushd {
+pub struct Push {
     pub production: bool,
     pub exchange: String,
     pub mass_mention_chunk_size: usize,
@@ -293,23 +269,16 @@ pub struct Pushd {
     pub fr_accepted_queue: String,
     pub fr_received_queue: String,
     pub generic_queue: String,
-    pub ack_queue: String,
 
     pub vapid: PushVapid,
-    pub fcm: PushFcm,
-    pub apn: PushApn,
 }
 
-impl Pushd {
+impl Push {
     fn get_routing_key(&self, key: String) -> String {
         match self.production {
             true => key + "-prd",
             false => key + "-tst",
         }
-    }
-
-    pub fn get_ack_routing_key(&self) -> String {
-        self.get_routing_key(self.ack_queue.clone())
     }
 
     pub fn get_message_routing_key(&self) -> String {
@@ -338,7 +307,7 @@ impl Pushd {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct January {
+pub struct Embeds {
     pub blocked_domains: Vec<String>,
 }
 
@@ -461,13 +430,12 @@ pub struct Features {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Sentry {
     pub api: String,
-    pub events: String,
-    pub voice_ingress: String,
+    pub gateway: String,
+    pub voice: String,
     pub files: String,
-    pub proxy: String,
-    pub pushd: String,
-    pub crond: String,
-    pub gifbox: String,
+    pub embeds: String,
+    pub push: String,
+    pub scheduler: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -476,8 +444,8 @@ pub struct Settings {
     pub rabbit: Rabbit,
     pub hosts: Hosts,
     pub api: Api,
-    pub pushd: Pushd,
-    pub january: January,
+    pub push: Push,
+    pub embeds: Embeds,
     pub files: Files,
     pub features: Features,
     pub sentry: Sentry,
@@ -500,7 +468,7 @@ impl Settings {
 
 pub async fn init() {
     println!(
-        ":: Revolt Configuration ::\n\x1b[32m{:?}\x1b[0m",
+        ":: Sonm Configuration ::\n\x1b[32m{:?}\x1b[0m",
         config().await
     );
 }
@@ -510,20 +478,13 @@ pub async fn read() -> Config {
 }
 
 pub async fn config_no_cache() -> Settings {
-    let mut config = read().await.try_deserialize::<Settings>().unwrap();
+    let config = read().await.try_deserialize::<Settings>().unwrap();
 
     // inject REDIS_URI for redis-kiss library
     if std::env::var("REDIS_URI").is_err() {
         unsafe {
             std::env::set_var("REDIS_URI", config.database.redis.clone());
         }
-    }
-
-    // auto-detect production nodes
-    if config.hosts.api.contains("https")
-        && (config.hosts.api.contains("revolt.chat") || config.hosts.api.contains("stoat.chat"))
-    {
-        config.production = true;
     }
 
     config

@@ -6,7 +6,6 @@ use revolt_rocket_okapi::{
 
 use crate::Session;
 
-
 impl<'r> OpenApiFromRequest<'r> for Session {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,

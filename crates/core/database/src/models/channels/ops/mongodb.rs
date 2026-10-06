@@ -1,13 +1,13 @@
 use super::AbstractChannels;
 use crate::{
-    util::ChunkedDatabaseGenerator, AbstractServers, Channel, FieldsChannel, IntoDocumentPath,
-    MongoDb, PartialChannel,
+    AbstractServers, Channel, FieldsChannel, IntoDocumentPath, MongoDb, PartialChannel,
+    util::ChunkedDatabaseGenerator,
 };
 use bson::{Bson, Document};
 use futures::StreamExt;
 use mongodb::options::ReadConcern;
-use revolt_permissions::OverrideField;
-use revolt_result::Result;
+use sonm_permissions::OverrideField;
+use sonm_result::Result;
 
 static COL: &str = "channels";
 

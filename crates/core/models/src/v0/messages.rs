@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use indexmap::{IndexMap, IndexSet};
-use revolt_config::config;
+use sonm_config::config;
 
 #[cfg(feature = "validator")]
 use validator::Validate;
@@ -11,7 +11,7 @@ use rocket::{FromForm, FromFormField};
 
 use iso8601_timestamp::Timestamp;
 
-use super::{Channel, Embed, File, Member, MessageWebhook, User, Webhook, RE_COLOUR};
+use super::{Channel, Embed, File, Member, MessageWebhook, RE_COLOUR, User, Webhook};
 
 auto_derived_partial!(
     /// Message
@@ -74,7 +74,7 @@ auto_derived_partial!(
 
         /// Bitfield of message flags
         ///
-        /// https://docs.rs/revolt-models/latest/revolt_models/v0/enum.MessageFlags.html
+        /// https://docs.rs/sonm-models/latest/sonm_models/v0/enum.MessageFlags.html
         #[cfg_attr(
             feature = "serde",
             serde(skip_serializing_if = "crate::if_zero_u32", default)
@@ -280,7 +280,7 @@ auto_derived!(
 
         /// Bitfield of message flags
         ///
-        /// https://docs.rs/revolt-models/latest/revolt_models/v0/enum.MessageFlags.html
+        /// https://docs.rs/sonm-models/latest/sonm_models/v0/enum.MessageFlags.html
         pub flags: Option<u32>,
     }
 
@@ -466,7 +466,7 @@ impl PushNotification {
 
         let icon = if let Some(author) = &author {
             if let Some(avatar) = author.avatar() {
-                format!("{}/avatars/{}", config.hosts.autumn, avatar)
+                format!("{}/avatars/{}", config.hosts.files, avatar)
             } else {
                 format!("{}/users/{}/default_avatar", config.hosts.api, author.id())
             }
@@ -477,7 +477,7 @@ impl PushNotification {
         let image = msg.attachments.as_ref().and_then(|attachments| {
             attachments
                 .first()
-                .map(|v| format!("{}/attachments/{}", config.hosts.autumn, v.id))
+                .map(|v| format!("{}/attachments/{}", config.hosts.files, v.id))
         });
 
         let body = if let Some(ref sys) = msg.system {
@@ -511,7 +511,7 @@ impl PushNotification {
         Self {
             author: author
                 .map(|x| x.username().to_string())
-                .unwrap_or_else(|| "Revolt".to_string()),
+                .unwrap_or_else(|| "Sonm".to_string()),
             icon,
             image,
             body,

@@ -1,9 +1,9 @@
 use std::{collections::HashSet, str::FromStr, time::Duration};
 
 use crate::{
+    AMQP, Database, File, RatelimitEvent,
     events::client::EventV1,
     util::email::{email_templates, send_email},
-    Database, File, RatelimitEvent, AMQP,
 };
 
 use futures::future::join_all;
@@ -11,11 +11,11 @@ use iso8601_timestamp::Timestamp;
 use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
 use regex::{Regex, RegexBuilder};
-use revolt_config::{config, FeaturesLimits};
-use revolt_models::v0::{self, UserBadges, UserFlags};
-use revolt_presence::filter_online;
-use revolt_result::{create_error, Result};
 use serde_json::json;
+use sonm_config::{FeaturesLimits, config};
+use sonm_models::v0::{self, UserBadges, UserFlags};
+use sonm_presence::filter_online;
+use sonm_result::{Result, create_error};
 use ulid::Ulid;
 
 auto_derived_partial!(
@@ -315,7 +315,7 @@ impl User {
 
         let username_lowercase = username.to_lowercase();
 
-        const BLOCKED_USERNAMES: &[&str] = &["admin", "revolt", "stoat"];
+        const BLOCKED_USERNAMES: &[&str] = &["admin", "sonm", "revolt", "stoat"];
 
         if BLOCKED_USERNAMES.contains(&username_lowercase.as_str())
             || BLOCKED_USERNAME_PATTERNS.is_match(username)
@@ -335,7 +335,7 @@ impl User {
             .map_err(|_| create_error!(InvalidUsername))?
             .to_string();
 
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
         let username_length_diff = config
             .api
             .users
@@ -906,11 +906,13 @@ mod tests {
     #[test]
     fn username_validation_blocked_names() {
         let username_admin = "Admin";
+        let username_sonm = "Sonm";
         let username_revolt = "Revolt";
         let username_stoat = "Stoat";
         let username_allowed = "Allowed";
 
         assert!(User::validate_username(username_admin).is_err());
+        assert!(User::validate_username(username_sonm).is_err());
         assert!(User::validate_username(username_revolt).is_err());
         assert!(User::validate_username(username_stoat).is_err());
         assert!(User::validate_username(username_allowed).is_ok());
@@ -971,8 +973,8 @@ mod tests {
 
     #[tokio::test]
     async fn create_user() {
-        use revolt_result::Result;
         use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
+        use sonm_result::Result;
 
         database_test!(|db| async move {
             let mut created_clean = User::create(&db, "Test".to_string(), None, None)
@@ -1057,9 +1059,13 @@ mod tests {
 
             // Removing the banner without any other field changes used to
             // send MongoDB an empty $set, which it rejects outright.
-            user.update(&db, PartialUser::default(), vec![FieldsUser::ProfileBackground])
-                .await
-                .unwrap();
+            user.update(
+                &db,
+                PartialUser::default(),
+                vec![FieldsUser::ProfileBackground],
+            )
+            .await
+            .unwrap();
 
             assert!(user.profile.as_ref().unwrap().background.is_none());
         });

@@ -1,10 +1,10 @@
 // Queue Type: Debounced
-use crate::{Database, Message, AMQP};
+use crate::{AMQP, Database, Message};
 
 use deadqueue::limited::Queue;
 use once_cell::sync::Lazy;
-use revolt_config::capture_message;
-use revolt_models::v0::PushNotification;
+use sonm_config::capture_message;
+use sonm_models::v0::PushNotification;
 use std::{
     any::Any,
     collections::{HashMap, HashSet},
@@ -12,7 +12,7 @@ use std::{
 };
 use validator::HasLen;
 
-use revolt_result::Result;
+use sonm_result::Result;
 
 use super::DelayedTask;
 use crate::Channel::TextChannel;
@@ -95,28 +95,7 @@ pub async fn handle_ack_event(
             let user = user.as_ref().unwrap();
             let user: &str = user.as_str();
 
-            let unread = db.fetch_unread(user, channel).await?;
-            let updated = db.acknowledge_message(channel, user, id).await?;
-
-            if let (Some(before), Some(after)) = (unread, updated) {
-                let before_mentions = before.mentions.unwrap_or_default().len();
-                let after_mentions = after.mentions.unwrap_or_default().len();
-
-                let mentions_acked = before_mentions - after_mentions;
-
-                if mentions_acked > 0 {
-                    if let Err(err) = amqp
-                        .ack_notification_message(
-                            user.to_string(),
-                            channel.to_string(),
-                            id.to_owned(),
-                        )
-                        .await
-                    {
-                        revolt_config::capture_error(&err);
-                    }
-                };
-            }
+            db.acknowledge_message(channel, user, id).await?;
         }
         AckEvent::ProcessMessage { messages } => {
             let mut users: HashSet<&String> = HashSet::new();
@@ -177,7 +156,7 @@ pub async fn handle_ack_event(
                     .message_sent(recipients.clone(), push.clone().unwrap())
                     .await
                 {
-                    revolt_config::capture_error(&err);
+                    sonm_config::capture_error(&err);
                 }
 
                 if message.contains_mass_push_mention() {
@@ -198,7 +177,7 @@ pub async fn handle_ack_event(
 
                 if let TextChannel { server, .. } = channel {
                     if let Err(err) = amqp.mass_mention_message_sent(server, mass_mentions).await {
-                        revolt_config::capture_error(&err);
+                        sonm_config::capture_error(&err);
                     }
                 } else {
                     info!(
@@ -233,7 +212,7 @@ pub async fn worker(db: Database, amqp: AMQP) {
                 let (user, channel, _) = key;
 
                 if let Err(err) = handle_ack_event(&event, &db, &amqp, user, channel).await {
-                    revolt_config::capture_error(&err);
+                    sonm_config::capture_error(&err);
                     error!("{err:?} for {event:?}. ({user:?}, {channel})");
                 } else {
                     info!("User {user:?} ack in {channel} with {event:?}");
@@ -280,7 +259,7 @@ pub async fn worker(db: Database, amqp: AMQP) {
 
                                 // put a cap on the amount of messages that can be queued, for particularly active channels
                                 if (existing.length() as u16)
-                                    < revolt_config::config()
+                                    < sonm_config::config()
                                         .await
                                         .features
                                         .advanced
@@ -290,7 +269,7 @@ pub async fn worker(db: Database, amqp: AMQP) {
                                 }
                             } else {
                                 let err_msg = format!("Got zero-length message event: {event:?}");
-                                capture_message(&err_msg, revolt_config::Level::Warning);
+                                capture_message(&err_msg, sonm_config::Level::Warning);
                                 info!("{err_msg}")
                             }
                         } else {

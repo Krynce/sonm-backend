@@ -146,7 +146,7 @@ auto_derived!(
         /// Description of text embed
         #[serde(skip_serializing_if = "Option::is_none")]
         pub description: Option<String>,
-        /// ID of uploaded autumn file
+        /// ID of uploaded file
         #[serde(skip_serializing_if = "Option::is_none")]
         pub media: Option<File>,
         /// CSS Colour

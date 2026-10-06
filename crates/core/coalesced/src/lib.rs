@@ -20,7 +20,7 @@
 //!
 //! ## Example:
 //! ```rs
-//! use revolt_coalesced::CoalescionService;
+//! use sonm_coalesced::CoalescionService;
 //!
 //! let service = CoalescionService::new();
 //!

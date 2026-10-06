@@ -1,19 +1,19 @@
 use std::{collections::HashSet, sync::LazyLock};
 
 use lettre::{
-    transport::smtp::{authentication::Credentials, client::Tls},
     SmtpTransport,
+    transport::smtp::{authentication::Credentials, client::Tls},
 };
 use regex::Regex;
-use revolt_config::{config, ApiSmtp};
-use revolt_result::Result;
+use sonm_config::{ApiSmtp, config};
+use sonm_result::Result;
 
 static SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new("([^@]+)(@.+)").unwrap());
 static SYMBOL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("\\+.+|\\.").unwrap());
 static HANDLEBARS: LazyLock<handlebars::Handlebars<'static>> =
     LazyLock::new(handlebars::Handlebars::new);
-static REVOLT_SOURCE_LIST: LazyLock<HashSet<String>> = LazyLock::new(|| {
-    include_str!("../../assets/revolt_source_list.txt")
+static DISPOSABLE_EMAIL_DOMAINS: LazyLock<HashSet<String>> = LazyLock::new(|| {
+    include_str!("../../assets/disposable_email_domains.txt")
         .split('\n')
         .map(|x| x.into())
         .collect()
@@ -100,22 +100,22 @@ pub async fn email_templates() -> Templates {
                 html: None,
             },
         }
-    } else if config.production {
+    } else {
         Templates {
             verify: Template {
-                title: "Verify your Stoat account.".into(),
+                title: "Verify your Sonm account.".into(),
                 text: include_str!("../../templates/verify.txt").into(),
                 url: format!("{}/login/verify/", config.hosts.app),
                 html: Some(include_str!("../../templates/verify.html").into()),
             },
             reset: Template {
-                title: "Reset your Stoat password.".into(),
+                title: "Reset your Sonm password.".into(),
                 text: include_str!("../../templates/reset.txt").into(),
                 url: format!("{}/login/reset/", config.hosts.app),
                 html: Some(include_str!("../../templates/reset.html").into()),
             },
             reset_existing: Template {
-                title: "You already have a Stoat account, reset your password.".into(),
+                title: "You already have a Sonm account, reset your password.".into(),
                 text: include_str!("../../templates/reset-existing.txt").into(),
                 url: format!("{}/login/reset/", config.hosts.app),
                 html: Some(include_str!("../../templates/reset-existing.html").into()),
@@ -131,39 +131,6 @@ pub async fn email_templates() -> Templates {
                 html: Some(include_str!("../../templates/suspension.html").to_owned()),
                 text: include_str!("../../templates/suspension.txt").to_owned(),
                 url: Default::default(),
-            },
-        }
-    } else {
-        Templates {
-            verify: Template {
-                title: "Verify your account.".into(),
-                text: include_str!("../../templates/verify.whitelabel.txt").into(),
-                url: format!("{}/login/verify/", config.hosts.app),
-                html: None,
-            },
-            reset: Template {
-                title: "Reset your password.".into(),
-                text: include_str!("../../templates/reset.whitelabel.txt").into(),
-                url: format!("{}/login/reset/", config.hosts.app),
-                html: None,
-            },
-            reset_existing: Template {
-                title: "Reset your password.".into(),
-                text: include_str!("../../templates/reset.whitelabel.txt").into(),
-                url: format!("{}/login/reset/", config.hosts.app),
-                html: None,
-            },
-            deletion: Template {
-                title: "Confirm account deletion.".into(),
-                text: include_str!("../../templates/deletion.whitelabel.txt").into(),
-                url: format!("{}/delete/", config.hosts.app),
-                html: None,
-            },
-            suspension: Template {
-                title: "Account Suspension".to_string(),
-                text: include_str!("../../templates/suspension.whitelabel.txt").to_owned(),
-                url: Default::default(),
-                html: None,
             },
         }
     }
@@ -245,7 +212,7 @@ pub fn send_email(
                 address, error
             );
 
-            revolt_config::capture_error(&error);
+            sonm_config::capture_error(&error);
 
             Err(create_error!(EmailFailed))
         }
@@ -262,7 +229,7 @@ pub fn validate_email(email: &str) -> Result<()> {
 
     // Check if the email is blacklisted
     if let Some(domain) = email.split('@').next_back() {
-        if REVOLT_SOURCE_LIST.contains(&domain.to_string()) {
+        if DISPOSABLE_EMAIL_DOMAINS.contains(&domain.to_string()) {
             return Err(create_error!(Blacklisted));
         }
     }

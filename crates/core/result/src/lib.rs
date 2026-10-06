@@ -60,11 +60,11 @@ impl serde::Serialize for Error {
 
         let location = match self.error_type {
             ErrorType::InvalidCredentials
-                | ErrorType::InvalidSession
-                | ErrorType::InvalidToken
-                | ErrorType::UnverifiedAccount
-                | ErrorType::LockedOut
-                | ErrorType::DisallowedMFAMethod => None,
+            | ErrorType::InvalidSession
+            | ErrorType::InvalidToken
+            | ErrorType::UnverifiedAccount
+            | ErrorType::LockedOut
+            | ErrorType::DisallowedMFAMethod => None,
             _ => Some(self.location.as_deref().unwrap()),
         };
 
@@ -221,9 +221,6 @@ pub enum ErrorType {
     ImageProcessingFailed,
     NoEmbedData,
 
-    // ? Legacy errors
-    VosoUnavailable,
-
     // ? Feature flag disabled in the config
     FeatureDisabled {
         feature: String,
@@ -286,12 +283,12 @@ macro_rules! query {
     };
 }
 
-pub trait ToRevoltError<T> {
+pub trait ToSonmError<T> {
     #[track_caller]
     fn to_internal_error(self) -> Result<T, Error>;
 }
 
-impl<T, E: std::fmt::Debug + std::error::Error> ToRevoltError<T> for Result<T, E> {
+impl<T, E: std::fmt::Debug + std::error::Error> ToSonmError<T> for Result<T, E> {
     #[track_caller]
     fn to_internal_error(self) -> Result<T, Error> {
         let loc = Location::caller();
@@ -309,7 +306,7 @@ impl<T, E: std::fmt::Debug + std::error::Error> ToRevoltError<T> for Result<T, E
     }
 }
 
-impl<T> ToRevoltError<T> for Option<T> {
+impl<T> ToSonmError<T> for Option<T> {
     #[track_caller]
     fn to_internal_error(self) -> Result<T, Error> {
         let loc = Location::caller();

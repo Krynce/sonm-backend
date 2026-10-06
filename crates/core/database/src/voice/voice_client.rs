@@ -1,16 +1,16 @@
 use crate::{
+    Database,
     models::{Channel, User},
     voice::RoomMetadata,
-    Database,
 };
 use livekit_api::{
     access_token::{AccessToken, VideoGrants},
     services::room::{CreateRoomOptions, RoomClient as InnerRoomClient, UpdateParticipantOptions},
 };
 use livekit_protocol::{ParticipantInfo, ParticipantPermission, Room};
-use revolt_config::{config, LiveKitNode};
-use revolt_permissions::{ChannelPermission, PermissionValue};
-use revolt_result::{create_error, Result, ToRevoltError};
+use sonm_config::{LiveKitNode, config};
+use sonm_permissions::{ChannelPermission, PermissionValue};
+use sonm_result::{Result, ToSonmError, create_error};
 use std::{collections::HashMap, time::Duration};
 
 use super::get_allowed_sources;
@@ -52,7 +52,7 @@ impl VoiceClient {
         !self.rooms.is_empty()
     }
 
-    pub async fn from_revolt_config() -> Self {
+    pub async fn from_config() -> Self {
         let config = config().await;
 
         Self::new(config.api.livekit.nodes.clone())

@@ -1,7 +1,7 @@
 use crate::{AbstractAccountInvites, AccountInvite, MongoDb};
 use bson::to_document;
 use mongodb::options::UpdateOptions;
-use revolt_result::Result;
+use sonm_result::Result;
 
 const COL: &str = "account_invites";
 

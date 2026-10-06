@@ -1,10 +1,10 @@
 use std::time::{Duration, SystemTime};
 
 use crate::{AbstractMFATickets, MFATicket, MongoDb};
-use bson::{to_document, Document};
+use bson::{Document, to_document};
 use iso8601_timestamp::Timestamp;
 use mongodb::options::UpdateOptions;
-use revolt_result::Result;
+use sonm_result::Result;
 use ulid::Ulid;
 
 const COL: &str = "mfa_tickets";

@@ -1,9 +1,9 @@
 //! Semi-important background task management
 
-use crate::{Database, AMQP};
+use crate::{AMQP, Database};
 
-use tokio::task;
 use std::time::Instant;
+use tokio::task;
 
 const WORKER_COUNT: usize = 5;
 

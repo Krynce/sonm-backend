@@ -1,11 +1,11 @@
 [package]
-name = "revolt-permissions"
-version = "0.15.5"
+name = "sonm-permissions"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 authors = ["Paul Makles <me@insrt.uk>"]
-description = "Revolt Backend: Permission Logic"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: Permission Logic"
+repository = "https://github.com/krynce/sonm-backend"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,7 +22,7 @@ tokio = { workspace = true }
 
 [dependencies]
 # Core
-revolt-result = { workspace = true }
+sonm-result = { workspace = true }
 
 # Utility
 auto_ops = { workspace = true }

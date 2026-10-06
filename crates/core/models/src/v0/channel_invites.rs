@@ -1,5 +1,5 @@
-use iso8601_timestamp::Timestamp;
 use super::{Channel, File, Server, User};
+use iso8601_timestamp::Timestamp;
 
 auto_derived!(
     /// Invite

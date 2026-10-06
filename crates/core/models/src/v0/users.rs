@@ -32,7 +32,7 @@ auto_derived_partial!(
         /// Display name
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         pub display_name: Option<String>,
-         /// User's pronouns
+        /// User's pronouns
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         pub pronouns: Option<String>,
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -47,7 +47,7 @@ auto_derived_partial!(
 
         /// Bitfield of user badges
         ///
-        /// https://docs.rs/revolt-models/latest/revolt_models/v0/enum.UserBadges.html
+        /// https://docs.rs/sonm-models/latest/sonm_models/v0/enum.UserBadges.html
         #[cfg_attr(
             feature = "serde",
             serde(skip_serializing_if = "crate::if_zero_u32", default)
@@ -59,7 +59,7 @@ auto_derived_partial!(
 
         /// Enum of user flags
         ///
-        /// https://docs.rs/revolt-models/latest/revolt_models/v0/enum.UserFlags.html
+        /// https://docs.rs/sonm-models/latest/sonm_models/v0/enum.UserFlags.html
         #[cfg_attr(
             feature = "serde",
             serde(skip_serializing_if = "crate::if_zero_u32", default)
@@ -170,15 +170,15 @@ auto_derived!(
     /// User badge bitfield
     #[repr(u32)]
     pub enum UserBadges {
-        /// Revolt Developer
+        /// Sonm Developer
         Developer = 1,
-        /// Helped translate Revolt
+        /// Helped translate Sonm
         Translator = 2,
-        /// Monetarily supported Revolt
+        /// Monetarily supported Sonm
         Supporter = 4,
         /// Responsibly disclosed a security issue
         ResponsibleDisclosure = 8,
-        /// Revolt Founder
+        /// Sonm Founder
         Founder = 16,
         /// Platform moderator
         PlatformModeration = 32,

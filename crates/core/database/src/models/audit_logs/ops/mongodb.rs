@@ -1,5 +1,5 @@
 use mongodb::options::FindOptions;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::{AuditLogEntry, AuditLogQuery, MongoDb};
 

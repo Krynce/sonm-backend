@@ -1,8 +1,8 @@
 use std::{any::Any, collections::HashMap, fmt::Debug, future::Future, hash::Hash, sync::Arc};
 
 use tokio::sync::{
-    watch::{channel as watch_channel, Receiver},
     RwLock,
+    watch::{Receiver, channel as watch_channel},
 };
 
 #[cfg(feature = "cache")]

@@ -1,10 +1,8 @@
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::FileHash;
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[async_trait]
 pub trait AbstractAttachmentHashes: Sync + Send {

@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use futures::StreamExt;
-use mongodb::bson::{doc, to_document, Document};
+use mongodb::bson::{Document, doc, to_document};
 use mongodb::error::Result;
 use mongodb::options::{FindOneOptions, FindOptions};
 use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 database_derived!(
     /// MongoDB implementation
@@ -25,7 +25,7 @@ impl Deref for MongoDb {
 
 #[allow(dead_code)]
 impl MongoDb {
-    /// Get the Revolt database
+    /// Get the Sonm database
     pub fn db(&self) -> mongodb::Database {
         self.database(&self.1)
     }

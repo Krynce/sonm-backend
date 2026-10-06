@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 use super::{File, UserVoiceState};
 
-use revolt_permissions::{Override, OverrideField};
+use sonm_permissions::{Override, OverrideField};
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "rocket")]
@@ -183,7 +183,7 @@ auto_derived!(
 
         /// Icon
         ///
-        /// Provide an Autumn attachment Id.
+        /// Provide an uploaded file id.
         #[cfg_attr(feature = "validator", validate(length(min = 1, max = 128)))]
         pub icon: Option<String>,
 

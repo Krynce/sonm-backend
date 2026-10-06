@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run push service"
+set -e
+
+cargo run --bin sonm-push

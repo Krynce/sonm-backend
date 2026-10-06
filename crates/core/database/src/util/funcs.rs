@@ -1,5 +1,5 @@
 use crate::Database;
-use revolt_result::Result;
+use sonm_result::Result;
 
 /// Formats a user's name depending on their optional features and location.
 /// Factors in server display names and user display names before falling back to username#discriminator.

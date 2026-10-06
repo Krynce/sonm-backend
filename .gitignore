@@ -1,14 +1,11 @@
 Rocket.toml
-Revolt.*.toml
+Sonm.*.toml
 compose.override.yml
 
 target
 .data
 .env
-.venv/
-venv/
 
-.vercel
 .DS_Store
 
 livekit.yml

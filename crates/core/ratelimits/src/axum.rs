@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-use revolt_database::{Database, User, util::ip::axum::to_real_ip};
+use sonm_database::{Database, User, util::ip::axum::to_real_ip};
 
 use crate::ratelimiter::{RatelimitInformation, Ratelimiter, RequestKind};
 
@@ -46,8 +46,7 @@ where
             let (bucket, resource) = storage.resolver.resolve_bucket(parts);
             let limit = storage.resolver.resolve_bucket_limit(bucket);
 
-            let ratelimiter =
-                Ratelimiter::from(&identifier, limit, (bucket, resource)).await;
+            let ratelimiter = Ratelimiter::from(&identifier, limit, (bucket, resource)).await;
 
             parts.extensions.insert(ratelimiter.map_err(Json));
         };

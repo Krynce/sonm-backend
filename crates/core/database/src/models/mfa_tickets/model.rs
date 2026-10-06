@@ -2,7 +2,7 @@ use iso8601_timestamp::{Duration, Timestamp};
 use std::ops::Deref;
 
 use nanoid::nanoid;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::{Database, MultiFactorAuthentication};
 

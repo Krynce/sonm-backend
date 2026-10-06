@@ -111,15 +111,15 @@ confidence-threshold = 0.8
 # aren't accepted for every possible crate as with the normal allow list
 exceptions = [
     # Each entry is the crate and version constraint, and its specific allow
-    { allow = ["AGPL-3.0"], crate = "revolt-database" },
-    { allow = ["AGPL-3.0"], crate = "revolt-presence" },
-    { allow = ["AGPL-3.0"], crate = "revolt-files" },
-    { allow = ["AGPL-3.0"], crate = "revolt-pushd" },
-    { allow = ["AGPL-3.0"], crate = "revolt-crond" },
-    { allow = ["AGPL-3.0"], crate = "revolt-delta" },
-    { allow = ["AGPL-3.0"], crate = "revolt-bonfire" },
-    { allow = ["AGPL-3.0"], crate = "revolt-autumn" },
-    { allow = ["AGPL-3.0"], crate = "revolt-january" },
+    { allow = ["AGPL-3.0"], crate = "sonm-database" },
+    { allow = ["AGPL-3.0"], crate = "sonm-presence" },
+    { allow = ["AGPL-3.0"], crate = "sonm-storage" },
+    { allow = ["AGPL-3.0"], crate = "sonm-push" },
+    { allow = ["AGPL-3.0"], crate = "sonm-scheduler" },
+    { allow = ["AGPL-3.0"], crate = "sonm-api" },
+    { allow = ["AGPL-3.0"], crate = "sonm-gateway" },
+    { allow = ["AGPL-3.0"], crate = "sonm-files" },
+    { allow = ["AGPL-3.0"], crate = "sonm-embeds" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,

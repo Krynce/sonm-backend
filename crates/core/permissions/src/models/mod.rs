@@ -3,8 +3,8 @@ mod server;
 mod user;
 
 pub use channel::*;
-use revolt_result::{create_error, Result};
 pub use server::*;
+use sonm_result::{Result, create_error};
 pub use user::*;
 
 /// Holds a permission value to manipulate.

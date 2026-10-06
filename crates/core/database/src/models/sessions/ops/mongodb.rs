@@ -2,7 +2,7 @@ use crate::{AbstractSessions, MongoDb, Session};
 use bson::{to_bson, to_document};
 use iso8601_timestamp::Timestamp;
 use mongodb::options::UpdateOptions;
-use revolt_result::Result;
+use sonm_result::Result;
 
 const COL: &str = "sessions";
 

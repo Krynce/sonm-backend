@@ -1,0 +1,40 @@
+[package]
+name = "sonm-scheduler"
+version = "0.1.0"
+license = "AGPL-3.0-or-later"
+authors = ["Paul Makles <me@insrt.uk>"]
+edition = "2024"
+description = "Sonm: Timed data clean up tasks"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Utility
+log = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+futures = { workspace = true }
+
+# Redis
+redis-kiss = { workspace = true, default-features = false, features = [
+    "tokio-runtime",
+] }
+
+# RabbitMQ
+lapin = { workspace = true }
+futures-lite = { workspace = true }
+
+# Processing
+serde_json = { workspace = true }
+revolt_optional_struct = { workspace = true }
+serde = { workspace = true }
+iso8601-timestamp = { workspace = true, features = ["serde", "bson"] }
+
+# Core
+sonm-database = { workspace = true }
+sonm-result = { workspace = true }
+sonm-config = { workspace = true }
+sonm-storage = { workspace = true }
+sonm-permissions = { workspace = true }

@@ -1,8 +1,8 @@
 use crate::util::ip;
 use reqwest::Client;
-use revolt_config::config;
-use revolt_result::Result;
 use serde::{Deserialize, Serialize};
+use sonm_config::config;
+use sonm_result::Result;
 use std::{collections::HashMap, sync::LazyLock};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
@@ -81,7 +81,7 @@ pub async fn validate_shield(input: ShieldValidationInput) -> Result<()> {
 #[cfg(feature = "rocket-impl")]
 #[async_trait]
 impl<'r> rocket::request::FromRequest<'r> for ShieldValidationInput {
-    type Error = revolt_result::Error;
+    type Error = sonm_result::Error;
 
     #[allow(clippy::collapsible_match)]
     async fn from_request(
@@ -114,7 +114,7 @@ impl<'r> revolt_rocket_okapi::request::OpenApiFromRequest<'r> for ShieldValidati
 #[cfg(feature = "axum-impl")]
 #[async_trait]
 impl<S> axum::extract::FromRequestParts<S> for ShieldValidationInput {
-    type Rejection = axum::Json<revolt_result::Error>;
+    type Rejection = axum::Json<sonm_result::Error>;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,

@@ -2,17 +2,18 @@
 resolver = "3"
 
 members = [
-    "crates/delta",
-    "crates/bonfire",
+    "crates/api",
+    "crates/gateway",
+    "crates/files",
+    "crates/embeds",
+    "crates/scheduler",
+    "crates/push",
+    "crates/voice",
     "crates/core/*",
-    "crates/services/*",
-    "crates/daemons/*",
 ]
 
 [patch.crates-io]
 redis23 = { package = "redis", version = "0.23.3", git = "https://github.com/revoltchat/redis-rs", rev = "523b2937367e17bd0073722bf6e23d06042cb4e4" }
-#authifier = { package = "authifier", version = "1.0.10", path = "../authifier/crates/authifier" }
-#rocket_authifier = { package = "rocket_authifier", version = "1.0.10", path = "../authifier/crates/rocket_authifier" }
 
 [profile.release]
 lto = true
@@ -72,9 +73,7 @@ reqwest = "0.13.2"
 isahc = "1.7"
 
 # Notifications
-fcm_v1 = "0.3.0"
 web-push = "0.10.0"
-revolt_a2 = "0.10"
 
 # Parsing
 logos = "0.15"
@@ -120,7 +119,6 @@ rocket = "0.5.1"
 rocket_empty = "0.1.1"
 revolt_rocket_okapi = "0.10.0"
 rocket_cors = { git = "https://github.com/lawliet89/rocket_cors", rev = "072d90359b23e9b291df6b672c07c93de9c46011" }
-rocket_authifier = "1.0.16"
 rocket_prometheus = "0.10.0-rc.3"
 
 # Spec Generation
@@ -147,15 +145,11 @@ infer = "0.16.0"
 ffprobe = "0.4.0"
 imagesize = "0.13.0"
 
-# OpenTelemetry
+# Tracing
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = [
     "env-filter",
 ] } # consider https://crates.io/crates/better-tracing
-opentelemetry = { version = "0.31.0", features = ["logs"] }
-opentelemetry_sdk = { version = "0.31.0", features = ["logs"] }
-opentelemetry-otlp = { version = "0.31.0", features = ["logs"] }
-opentelemetry-appender-tracing = "0.31.1"
 
 # RabbitMQ
 lapin = "4.7.1"
@@ -194,13 +188,13 @@ futures-lite = "2.6.1"
 vergen = "7.5.0"
 
 # Local packages
-revolt-coalesced = { version = "0.15.5", path = "crates/core/coalesced" }
-revolt-config = { version = "0.15.5", path = "crates/core/config" }
-revolt-database = { version = "0.15.5", path = "crates/core/database" }
-revolt-files = { version = "0.15.5", path = "crates/core/files" }
-revolt-models = { version = "0.15.5", path = "crates/core/models" }
-revolt-parser = { version = "0.15.5", path = "crates/core/parser" }
-revolt-permissions = { version = "0.15.5", path = "crates/core/permissions" }
-revolt-presence = { version = "0.15.5", path = "crates/core/presence" }
-revolt-ratelimits = { version = "0.15.5", path = "crates/core/ratelimits" }
-revolt-result = { version = "0.15.5", path = "crates/core/result" }
+sonm-coalesced = { version = "0.1.0", path = "crates/core/coalesced" }
+sonm-config = { version = "0.1.0", path = "crates/core/config" }
+sonm-database = { version = "0.1.0", path = "crates/core/database" }
+sonm-storage = { version = "0.1.0", path = "crates/core/storage" }
+sonm-models = { version = "0.1.0", path = "crates/core/models" }
+sonm-parser = { version = "0.1.0", path = "crates/core/parser" }
+sonm-permissions = { version = "0.1.0", path = "crates/core/permissions" }
+sonm-presence = { version = "0.1.0", path = "crates/core/presence" }
+sonm-ratelimits = { version = "0.1.0", path = "crates/core/ratelimits" }
+sonm-result = { version = "0.1.0", path = "crates/core/result" }

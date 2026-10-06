@@ -1,7 +1,9 @@
-use revolt_result::Result;
+use sonm_result::Result;
 use ulid::Ulid;
 
-use crate::{events::client::EventV1, BotInformation, Database, PartialUser, RemovalIntention, User};
+use crate::{
+    BotInformation, Database, PartialUser, RemovalIntention, User, events::client::EventV1,
+};
 
 auto_derived_partial!(
     /// Bot
@@ -168,7 +170,7 @@ impl Bot {
 
             server.cleanup_managed_bot_role(db, &self.id).await?;
         }
-        
+
         db.fetch_user(&self.id).await?.mark_deleted(db).await?;
         db.delete_bot(&self.id).await
     }
@@ -177,8 +179,8 @@ impl Bot {
 #[cfg(test)]
 mod tests {
 
-use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
-use crate::{Bot, FieldsBot, PartialBot, User};
+    use crate::{Bot, FieldsBot, PartialBot, User};
+    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
 
     #[tokio::test]
     async fn crud() {

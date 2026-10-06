@@ -1,7 +1,7 @@
 use crate::{
-    calculate_channel_permissions, calculate_user_permissions, ChannelPermission, ChannelType,
-    Override, PermissionQuery, RelationshipStatus, DEFAULT_PERMISSION_DIRECT_MESSAGE,
-    DEFAULT_PERMISSION_SERVER, DEFAULT_PERMISSION_VIEW_ONLY,
+    ChannelPermission, ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, DEFAULT_PERMISSION_SERVER,
+    DEFAULT_PERMISSION_VIEW_ONLY, Override, PermissionQuery, RelationshipStatus,
+    calculate_channel_permissions, calculate_user_permissions,
 };
 
 #[tokio::test]
@@ -517,4 +517,3 @@ async fn validate_channel_default_below_server_roles() {
         }
     }
 }
-

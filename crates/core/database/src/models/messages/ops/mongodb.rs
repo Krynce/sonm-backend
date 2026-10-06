@@ -1,9 +1,9 @@
-use bson::{to_bson, Document};
-use futures::try_join;
+use bson::{Document, to_bson};
 use futures::StreamExt;
+use futures::try_join;
 use mongodb::options::FindOptions;
-use revolt_models::v0::MessageSort;
-use revolt_result::Result;
+use sonm_models::v0::MessageSort;
+use sonm_result::Result;
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 use ulid::Ulid;
@@ -420,7 +420,8 @@ impl AbstractMessages for MongoDb {
     async fn delete_messages_by_user(&self, user_id: &str) -> Result<()> {
         self.delete_bulk_messages(doc! {
             "author": user_id,
-        }).await
+        })
+        .await
     }
 }
 

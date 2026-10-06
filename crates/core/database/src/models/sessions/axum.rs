@@ -1,6 +1,9 @@
-use axum::{extract::{FromRef, FromRequestParts}, http::request::Parts};
+use axum::{
+    extract::{FromRef, FromRequestParts},
+    http::request::Parts,
+};
 
-use revolt_result::{create_error, Error, Result};
+use sonm_result::{Error, Result, create_error};
 
 use crate::{Database, Session};
 
@@ -8,7 +11,7 @@ use crate::{Database, Session};
 impl<S> FromRequestParts<S> for Session
 where
     Database: FromRef<S>,
-    S: Send + Sync
+    S: Send + Sync,
 {
     type Rejection = Error;
 

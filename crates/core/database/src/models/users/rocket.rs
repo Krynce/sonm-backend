@@ -1,6 +1,6 @@
-use revolt_result::Error;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest, Outcome, Request};
+use sonm_result::Error;
 
 use crate::{Database, Session, User};
 

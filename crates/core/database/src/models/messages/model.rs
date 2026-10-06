@@ -1,22 +1,26 @@
 use indexmap::{IndexMap, IndexSet};
 use iso8601_timestamp::Timestamp;
-use revolt_config::{config, FeaturesLimits};
-use revolt_models::v0::{
+use sonm_config::{FeaturesLimits, config};
+use sonm_models::v0::{
     self, BulkMessageResponse, DataMessageSend, Embed, MessageAuthor, MessageFlags, MessageSort,
     MessageWebhook, PushNotification, ReplyIntent, SendableEmbed, Text,
 };
-use revolt_permissions::{calculate_channel_permissions, ChannelPermission, PermissionValue};
-use revolt_result::{ErrorType, Result};
+use sonm_permissions::{ChannelPermission, PermissionValue, calculate_channel_permissions};
+use sonm_result::{ErrorType, Result};
 use std::str::FromStr;
 use std::time::SystemTime;
 use std::{collections::HashSet, hash::RandomState};
 use ulid::Ulid;
 use validator::Validate;
 
-use crate::{events::client::EventV1, util::{
-    bulk_permissions::BulkDatabasePermissionQuery, idempotency::IdempotencyKey,
-    permissions::DatabasePermissionQuery,
-}, Channel, Database, Emoji, EmojiParent, File, User, AMQP};
+use crate::{
+    AMQP, Channel, Database, Emoji, EmojiParent, File, User,
+    events::client::EventV1,
+    util::{
+        bulk_permissions::BulkDatabasePermissionQuery, idempotency::IdempotencyKey,
+        permissions::DatabasePermissionQuery,
+    },
+};
 
 #[cfg(feature = "tasks")]
 use crate::tasks::{self, ack::AckEvent};
@@ -372,15 +376,15 @@ impl Message {
         // Parse mentions in message.
 
         let mut message_mentions = if let Some(raw_content) = &data.content {
-            revolt_parser::parse_message(raw_content)
+            sonm_parser::parse_message(raw_content)
         } else {
-            revolt_parser::MessageResults::default()
+            sonm_parser::MessageResults::default()
         };
 
         message_mentions.mentions_everyone |= mentions_everyone;
         message_mentions.mentions_online |= mentions_online;
 
-        let revolt_parser::MessageResults {
+        let sonm_parser::MessageResults {
             mut user_mentions,
             mut role_mentions,
             mut mentions_everyone,
@@ -521,7 +525,7 @@ impl Message {
                                 .retain(|m| *member_channel_view_perms.get(m).unwrap_or(&false));
                         }
                     } else {
-                        revolt_config::capture_error(&valid_members.unwrap_err());
+                        sonm_config::capture_error(&valid_members.unwrap_err());
                         return Err(create_error!(InternalError));
                     }
                 }
@@ -961,7 +965,7 @@ impl Message {
         emoji_ids: &[String],
     ) -> Result<bool> {
         let resolved = db.fetch_emojis(emoji_ids).await.map_err(|e| {
-            revolt_config::capture_error(&e);
+            sonm_config::capture_error(&e);
             create_database_error!("find", "emojis")
         })?;
 
@@ -1007,7 +1011,9 @@ impl Message {
                 if Message::any_foreign_emoji(db, &server_id, &[emoji.to_string()]).await? {
                     calculate_channel_permissions(query)
                         .await
-                        .throw_if_lacking_channel_permission(ChannelPermission::UseExternalEmojis)?;
+                        .throw_if_lacking_channel_permission(
+                            ChannelPermission::UseExternalEmojis,
+                        )?;
                 }
             }
         }
@@ -1065,7 +1071,7 @@ impl Message {
 
         db.delete_message(&self.id).await?;
 
-        if let Ok(mut channel) = db.fetch_channel(&self.channel).await {
+        if let Ok(channel) = db.fetch_channel(&self.channel).await {
             match &channel {
                 Channel::DirectMessage {
                     last_message_id, ..
@@ -1086,7 +1092,7 @@ impl Message {
                         if new_last_message_id.is_some() {
                             EventV1::ChannelUpdate {
                                 id: channel.id().to_string(),
-                                data: revolt_models::v0::PartialChannel {
+                                data: sonm_models::v0::PartialChannel {
                                     last_message_id: new_last_message_id,
                                     ..Default::default()
                                 },

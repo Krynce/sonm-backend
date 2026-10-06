@@ -1,10 +1,8 @@
 use std::time::Duration;
 
-use crate::{revolt_result::Result, RatelimitEvent, RatelimitEventType};
+use crate::{RatelimitEvent, RatelimitEventType, sonm_result::Result};
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[async_trait]
 pub trait AbstractRatelimitEvents: Sync + Send {

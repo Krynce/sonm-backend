@@ -4,8 +4,7 @@ use revolt_rocket_okapi::{
     request::{OpenApiFromRequest, RequestHeaderInput},
 };
 
-use crate::{MFATicket, ValidatedTicket, UnvalidatedTicket};
-
+use crate::{MFATicket, UnvalidatedTicket, ValidatedTicket};
 
 impl<'r> OpenApiFromRequest<'r> for MFATicket {
     fn from_request_input(

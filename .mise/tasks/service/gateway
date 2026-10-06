@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run WebSocket gateway"
+set -e
+
+cargo run --bin sonm-gateway

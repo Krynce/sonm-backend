@@ -1,19 +1,19 @@
 use iso8601_timestamp::{Duration, Timestamp};
 
 use nanoid::nanoid;
-use revolt_config::config;
-use revolt_result::Result;
 use serde_json::json;
+use sonm_config::config;
+use sonm_result::Result;
 
 use crate::{
+    Database, MFATicket, Session,
     events::client::EventV1,
     util::{
         email::{email_templates, normalise_email, send_email},
         password::hash_password,
     },
-    Database, MFATicket, Session,
 };
-use revolt_models::v0;
+use sonm_models::v0;
 
 auto_derived_partial!(
     /// Account model

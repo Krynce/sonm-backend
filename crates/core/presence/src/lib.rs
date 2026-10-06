@@ -199,7 +199,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_works() {
-        revolt_config::config().await;
+        sonm_config::config().await;
 
         // Clear the region before we start the tests:
         clear_region(None).await;

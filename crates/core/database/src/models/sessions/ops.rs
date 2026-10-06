@@ -1,11 +1,9 @@
 use iso8601_timestamp::Timestamp;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::Session;
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[async_trait]
 pub trait AbstractSessions: Sync + Send {

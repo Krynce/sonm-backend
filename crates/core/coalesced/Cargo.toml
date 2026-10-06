@@ -1,11 +1,11 @@
 [package]
-name = "revolt-coalesced"
-version = "0.15.5"
+name = "sonm-coalesced"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 authors = ["Paul Makles <me@insrt.uk>", "Zomatree <me@zomatree.live>"]
-description = "Revolt Backend: Coalescion service"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: Coalescion service"
+repository = "https://github.com/krynce/sonm-backend"
 
 [features]
 tokio = ["dep:tokio"]

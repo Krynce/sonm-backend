@@ -1,6 +1,6 @@
 use ::mongodb::options::{Collation, CollationStrength, FindOneOptions, FindOptions};
 use futures::StreamExt;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::DocumentId;
 use crate::IntoDocumentPath;

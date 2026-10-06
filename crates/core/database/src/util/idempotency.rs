@@ -1,13 +1,13 @@
 use std::num::NonZeroUsize;
 
-use revolt_result::{create_error, Result};
+use sonm_result::{Result, create_error};
 
 #[cfg(feature = "rocket-impl")]
-use revolt_result::Error;
+use sonm_result::Error;
 
-use tokio::sync::Mutex;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 #[derive(Serialize, Deserialize)]
 pub struct IdempotencyKey {

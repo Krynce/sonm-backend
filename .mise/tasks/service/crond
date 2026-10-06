@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run cron daemon"
-set -e
-
-cargo run --bin revolt-crond

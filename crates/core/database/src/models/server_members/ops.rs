@@ -1,31 +1,21 @@
-#[cfg(feature = "mongodb")]
 use ::mongodb::{ClientSession, SessionCursor};
 
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::{FieldsMember, Member, MemberCompositeKey, PartialMember};
 
-#[cfg(feature = "mongodb")]
 mod mongodb;
-mod reference;
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum ChunkedServerMembersGenerator {
-    #[cfg(feature = "mongodb")]
     MongoDb {
         session: ClientSession,
         cursor: Option<SessionCursor<Member>>,
     },
-
-    Reference {
-        offset: i32,
-        data: Option<Vec<Member>>,
-    },
 }
 
 impl ChunkedServerMembersGenerator {
-    #[cfg(feature = "mongodb")]
     pub fn new_mongo(session: ClientSession, cursor: SessionCursor<Member>) -> Self {
         ChunkedServerMembersGenerator::MongoDb {
             session,
@@ -33,36 +23,16 @@ impl ChunkedServerMembersGenerator {
         }
     }
 
-    pub fn new_reference(data: Vec<Member>) -> Self {
-        ChunkedServerMembersGenerator::Reference {
-            offset: 0,
-            data: Some(data),
-        }
-    }
-
     pub async fn next(&mut self) -> Option<Member> {
         match self {
-            #[cfg(feature = "mongodb")]
             ChunkedServerMembersGenerator::MongoDb { session, cursor } => {
                 if let Some(cursor) = cursor {
                     let value = cursor.next(session).await;
                     value.map(|val| val.expect("Failed to fetch the next member"))
                 } else {
-                    warn!("Attempted to access a (MongoDb) server member generator without first setting a cursor");
-                    None
-                }
-            }
-            ChunkedServerMembersGenerator::Reference { offset, data } => {
-                if let Some(data) = data {
-                    if data.len() as i32 >= *offset {
-                        None
-                    } else {
-                        let resp = &data[*offset as usize];
-                        *offset += 1;
-                        Some(resp.clone())
-                    }
-                } else {
-                    warn!("Attempted to access a (Reference) server member generator without first providing data");
+                    warn!(
+                        "Attempted to access a (MongoDb) server member generator without first setting a cursor"
+                    );
                     None
                 }
             }

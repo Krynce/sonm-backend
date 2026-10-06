@@ -10,7 +10,7 @@ pub enum ChannelType {
     Unknown,
 }
 
-/// Permission value on Revolt
+/// Permission value on Sonm
 ///
 /// This should be restricted to the lower 52 bits to prevent any
 /// potential issues with Javascript. Also leave empty spaces for
@@ -141,14 +141,16 @@ pub static DEFAULT_PERMISSION: Lazy<u64> = Lazy::new(|| {
             + ChannelPermission::Connect
             + ChannelPermission::Speak
             + ChannelPermission::Listen
-            + ChannelPermission::Video
+            + ChannelPermission::Video,
     )
 });
 
 pub static DEFAULT_PERMISSION_SAVED_MESSAGES: u64 = ChannelPermission::GrantAllSafe as u64;
 
 pub static DEFAULT_PERMISSION_DIRECT_MESSAGE: Lazy<u64> = Lazy::new(|| {
-    DEFAULT_PERMISSION.add(ChannelPermission::ManageChannel + ChannelPermission::React + ChannelPermission::Masquerade)
+    DEFAULT_PERMISSION.add(
+        ChannelPermission::ManageChannel + ChannelPermission::React + ChannelPermission::Masquerade,
+    )
 });
 
 pub static DEFAULT_PERMISSION_SERVER: Lazy<u64> = Lazy::new(|| {

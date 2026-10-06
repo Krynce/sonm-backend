@@ -84,5 +84,4 @@ auto_derived!(
             user_id: String,
         },
     }
-
 );

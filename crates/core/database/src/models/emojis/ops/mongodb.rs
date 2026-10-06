@@ -1,8 +1,8 @@
 use bson::Document;
-use revolt_result::Result;
+use sonm_result::Result;
 
-use crate::{Emoji, PartialEmoji};
 use crate::MongoDb;
+use crate::{Emoji, PartialEmoji};
 
 use super::AbstractEmojis;
 
@@ -23,15 +23,15 @@ impl AbstractEmojis for MongoDb {
     /// Fetch emoji by their ids
     async fn fetch_emojis(&self, ids: &[String]) -> Result<Vec<Emoji>> {
         query!(
-        self,
-        find,
-        COL,
-        doc! {
-            "_id": {
-                "$in": ids
+            self,
+            find,
+            COL,
+            doc! {
+                "_id": {
+                    "$in": ids
+                }
             }
-        }
-    )
+        )
     }
 
     /// Fetch emoji by their parent id

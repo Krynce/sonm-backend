@@ -1,26 +1,26 @@
 [package]
-name = "revolt-ratelimits"
-version = "0.15.5"
+name = "sonm-ratelimits"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 authors = ["Zomatree <me@zomatree.live>", "Paul Makles <me@insrt.uk>"]
-description = "Revolt Backend: Ratelimit Handler"
-repository = "https://github.com/stoatchat/stoatchat"
+description = "Sonm: Ratelimit Handler"
+repository = "https://github.com/krynce/sonm-backend"
 
 [features]
 rocket = [
     "dep:rocket",
     "dep:revolt_rocket_okapi",
-    "revolt-database/rocket-impl",
+    "sonm-database/rocket-impl",
 ]
-axum = ["dep:axum", "revolt-database/axum-impl"]
+axum = ["dep:axum", "sonm-database/axum-impl"]
 
 default = ["rocket", "axum"]
 
 [dependencies]
-revolt-database = { workspace = true }
-revolt-result = { workspace = true }
-revolt-config = { workspace = true }
+sonm-database = { workspace = true }
+sonm-result = { workspace = true }
+sonm-config = { workspace = true }
 
 rocket = { workspace = true, optional = true }
 revolt_rocket_okapi = { workspace = true, optional = true }

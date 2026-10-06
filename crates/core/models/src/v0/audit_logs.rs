@@ -1,5 +1,7 @@
-use crate::v0::{Member, PartialChannel, PartialEmoji, PartialMember, PartialRole, PartialServer, User};
-use revolt_permissions::Override;
+use crate::v0::{
+    Member, PartialChannel, PartialEmoji, PartialMember, PartialRole, PartialServer, User,
+};
+use sonm_permissions::Override;
 
 auto_derived!(
     /// Audit log entry

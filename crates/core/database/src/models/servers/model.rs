@@ -1,16 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
 use redis_kiss::{
-    get_connection,
+    AsyncCommands, get_connection,
     redis::{SetExpiry, SetOptions},
-    AsyncCommands,
 };
-use revolt_models::v0::{self, DataCreateServerChannel};
-use revolt_permissions::{OverrideField, DEFAULT_PERMISSION_SERVER};
-use revolt_result::Result;
+use sonm_models::v0::{self, DataCreateServerChannel};
+use sonm_permissions::{DEFAULT_PERMISSION_SERVER, OverrideField};
+use sonm_result::Result;
 use ulid::Ulid;
 
-use crate::{events::client::EventV1, Channel, Database, File, User};
+use crate::{Channel, Database, File, User, events::client::EventV1};
 
 auto_derived_partial!(
     /// Server
@@ -431,8 +430,8 @@ impl Role {
             data: role.clone().into_optional().into(),
             clear: vec![],
         }
-            .p(server.id.clone())
-            .await;
+        .p(server.id.clone())
+        .await;
 
         Ok(role)
     }
@@ -536,10 +535,10 @@ impl SystemMessageChannels {
 
 #[cfg(test)]
 mod tests {
-    use revolt_permissions::{calculate_server_permissions, ChannelPermission};
+    use sonm_permissions::{ChannelPermission, calculate_server_permissions};
 
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
     use crate::{fixture, util::permissions::DatabasePermissionQuery};
+    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
 
     #[tokio::test]
     async fn permissions() {
@@ -551,19 +550,25 @@ mod tests {
                 server server 4);
 
             let mut query = DatabasePermissionQuery::new(&db, &owner).server(&server);
-            assert!(calculate_server_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::GrantAllSafe));
+            assert!(
+                calculate_server_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::GrantAllSafe)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &moderator).server(&server);
-            assert!(calculate_server_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::BanMembers));
+            assert!(
+                calculate_server_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::BanMembers)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &user).server(&server);
-            assert!(!calculate_server_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::BanMembers));
+            assert!(
+                !calculate_server_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::BanMembers)
+            );
         });
     }
 }

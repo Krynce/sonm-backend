@@ -1,9 +1,9 @@
 use std::io::Cursor;
 
 use rocket::{
+    Request, Response,
     http::{ContentType, Status},
     response::{self, Responder},
-    Request, Response,
 };
 
 use crate::{Error, ErrorType};
@@ -101,7 +101,6 @@ impl<'r> Responder<'r, 'static> for Error {
             ErrorType::FileTypeNotAllowed => Status::BadRequest,
             ErrorType::ImageProcessingFailed => Status::InternalServerError,
             ErrorType::NoEmbedData => Status::BadRequest,
-            ErrorType::VosoUnavailable => Status::BadRequest,
 
             ErrorType::RenderFail => Status::InternalServerError,
             ErrorType::MissingHeaders => Status::BadRequest,

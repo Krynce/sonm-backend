@@ -1,7 +1,7 @@
 use iso8601_timestamp::Timestamp;
 
-use crate::{events::client::EventV1, Database};
-use revolt_result::Result;
+use crate::{Database, events::client::EventV1};
+use sonm_result::Result;
 
 auto_derived_partial!(
     /// Session information

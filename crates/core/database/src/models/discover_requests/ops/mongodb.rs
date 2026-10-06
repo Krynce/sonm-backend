@@ -1,4 +1,4 @@
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::DiscoverBan;
 use crate::DiscoverRequest;

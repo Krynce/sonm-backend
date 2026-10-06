@@ -9,8 +9,8 @@ use redis_kiss::{
     get_connection,
     redis::{Pipeline, SetExpiry, SetOptions, aio::Connection},
 };
-use revolt_result::ToRevoltError;
 use serde::Serialize;
+use sonm_result::ToSonmError;
 
 static IS_TEST_ENV: LazyLock<bool> = LazyLock::new(|| std::env::var("TEST_DB").is_ok());
 

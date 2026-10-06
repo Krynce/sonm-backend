@@ -2,7 +2,7 @@
 #MISE description="Test project"
 set -e
 
-: "${TEST_DB:=REFERENCE}"
+: "${TEST_DB:=MONGODB}"
 export TEST_DB
 
 cargo nextest run

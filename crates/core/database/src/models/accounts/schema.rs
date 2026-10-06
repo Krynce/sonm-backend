@@ -6,7 +6,6 @@ use revolt_rocket_okapi::{
 
 use crate::Account;
 
-
 impl<'r> OpenApiFromRequest<'r> for Account {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,

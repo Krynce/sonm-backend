@@ -1,0 +1,31 @@
+// use sonm_database::util::reference::Reference;
+use rocket::State;
+use rocket::serde::json::Json;
+use sonm_database::{AMQP, Database, User};
+use sonm_models::v0;
+use sonm_result::{Result, create_error};
+
+/// # Send Friend Request
+///
+/// Send a friend request to another user.
+#[openapi(tag = "Relationships")]
+#[post("/friend", data = "<data>")]
+pub async fn send_friend_request(
+    db: &State<Database>,
+    amqp: &State<AMQP>,
+    mut user: User,
+    data: Json<v0::DataSendFriendRequest>,
+) -> Result<Json<v0::User>> {
+    if let Some((username, discriminator)) = data.username.split_once('#') {
+        let mut target = db.fetch_user_by_username(username, discriminator).await?;
+
+        if user.bot.is_some() || target.bot.is_some() {
+            return Err(create_error!(IsBot));
+        }
+
+        user.add_friend(db, amqp, &mut target).await?;
+        Ok(Json(target.into(db, &user).await))
+    } else {
+        Err(create_error!(InvalidProperty))
+    }
+}

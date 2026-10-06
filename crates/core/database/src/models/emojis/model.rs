@@ -2,12 +2,12 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use once_cell::sync::Lazy;
-use revolt_models::v0;
-use revolt_result::Result;
+use sonm_models::v0;
+use sonm_result::Result;
 use ulid::Ulid;
 
-use crate::events::client::EventV1;
 use crate::Database;
+use crate::events::client::EventV1;
 
 static PERMISSIBLE_EMOJIS: Lazy<HashSet<String>> = Lazy::new(|| {
     include_str!("unicode_emoji.txt")
@@ -114,12 +114,7 @@ impl Emoji {
     pub fn generate_diff(&self, partial: &PartialEmoji) -> PartialEmoji {
         let mut before = PartialEmoji::default();
 
-        generate_diff!(
-            self, before, partial, remove,
-            (
-                name,
-            )
-        );
+        generate_diff!(self, before, partial, remove, (name,));
 
         before
     }

@@ -1,8 +1,8 @@
 use iso8601_timestamp::Timestamp;
-use revolt_models::v0::*;
-use revolt_permissions::{calculate_user_permissions, UserPermission};
+use sonm_models::v0::*;
+use sonm_permissions::{UserPermission, calculate_user_permissions};
 
-use crate::{util::permissions::DatabasePermissionQuery, Database};
+use crate::{Database, util::permissions::DatabasePermissionQuery};
 
 impl crate::Bot {
     pub fn into_public_bot(self, user: crate::User) -> PublicBot {
@@ -66,7 +66,7 @@ impl From<crate::Invite> for Invite {
                 channel,
                 max_uses,
                 uses,
-                expires
+                expires,
             } => Invite::Group {
                 code,
                 creator,
@@ -74,7 +74,6 @@ impl From<crate::Invite> for Invite {
                 max_uses,
                 uses,
                 expires,
-
             },
             crate::Invite::Server {
                 code,
@@ -990,7 +989,7 @@ impl From<crate::Role> for Role {
             hoist: value.hoist,
             rank: value.rank,
             icon: value.icon.map(|f| f.into()),
-            owner: value.owner
+            owner: value.owner,
         }
     }
 }
@@ -1005,7 +1004,7 @@ impl From<Role> for crate::Role {
             hoist: value.hoist,
             rank: value.rank,
             icon: value.icon.map(|f| f.into()),
-            owner: value.owner
+            owner: value.owner,
         }
     }
 }
@@ -1020,7 +1019,7 @@ impl From<crate::PartialRole> for PartialRole {
             hoist: value.hoist,
             rank: value.rank,
             icon: value.icon.map(|f| f.into()),
-            owner: value.owner
+            owner: value.owner,
         }
     }
 }
@@ -1035,7 +1034,7 @@ impl From<PartialRole> for crate::PartialRole {
             hoist: value.hoist,
             rank: value.rank,
             icon: value.icon.map(|f| f.into()),
-            owner: value.owner
+            owner: value.owner,
         }
     }
 }
@@ -1114,7 +1113,7 @@ impl crate::User {
             },
             badges,
             online: can_see_profile
-                && revolt_presence::is_online(&self.id).await
+                && sonm_presence::is_online(&self.id).await
                 && !matches!(
                     self.status,
                     Some(crate::UserStatus {
@@ -1246,7 +1245,7 @@ impl crate::User {
                 })
                 .unwrap_or_default(),
             badges,
-            online: (force_online || revolt_presence::is_online(&self.id).await)
+            online: (force_online || sonm_presence::is_online(&self.id).await)
                 && !matches!(
                     self.status,
                     Some(crate::UserStatus {
@@ -1263,7 +1262,7 @@ impl crate::User {
         }
     }
 
-    pub fn as_author_for_system(&self) -> MessageAuthor {
+    pub fn as_author_for_system(&self) -> MessageAuthor<'_> {
         MessageAuthor::System {
             username: &self.username,
             avatar: self.avatar.as_ref().map(|file| file.id.as_ref()),

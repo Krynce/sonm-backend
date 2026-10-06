@@ -2,8 +2,8 @@ use reqwest::Client;
 use sha1::Digest;
 use std::{collections::HashSet, sync::LazyLock};
 
-use revolt_config::config;
-use revolt_result::{Result, ToRevoltError};
+use sonm_config::config;
+use sonm_result::{Result, ToSonmError};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 static ARGON_CONFIG: LazyLock<argon2::Config<'static>> = LazyLock::new(argon2::Config::default);
@@ -58,7 +58,7 @@ pub async fn assert_safe(password: &str) -> Result<()> {
         };
 
         if let Err(e) = &result {
-            revolt_config::capture_error(e);
+            sonm_config::capture_error(e);
         } else if result.is_ok_and(|b| b) {
             return Ok(());
         }

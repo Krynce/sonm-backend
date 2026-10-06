@@ -2,6 +2,9 @@
 # If you're having trouble building this locally or on your CI, try lowering
 # the job count via CARGO_BUILD_JOBS. It defaults to 10.
 
+APPS="api gateway files embeds scheduler push voice"
+LIBS="config database storage models parser permissions presence result coalesced ratelimits"
+
 if [ -z "$TARGETARCH" ]; then
   :
 else
@@ -23,46 +26,15 @@ tools() {
 }
 
 deps() {
-  mkdir -p \
-    crates/bonfire/src \
-    crates/delta/src \
-    crates/core/config/src \
-    crates/core/database/src \
-    crates/core/files/src \
-    crates/core/models/src \
-    crates/core/parser/src \
-    crates/core/permissions/src \
-    crates/core/presence/src \
-    crates/core/result/src \
-    crates/core/coalesced/src \
-    crates/core/ratelimits/src \
-    crates/services/autumn/src \
-    crates/services/january/src \
-    crates/services/gifbox/src \
-    crates/daemons/crond/src \
-    crates/daemons/pushd/src \
-    crates/daemons/voice-ingress/src
-  echo 'fn main() { panic!("stub"); }' |
-    tee crates/bonfire/src/main.rs |
-    tee crates/delta/src/main.rs |
-    tee crates/services/autumn/src/main.rs |
-    tee crates/services/january/src/main.rs |
-    tee crates/services/gifbox/src/main.rs |
-    tee crates/daemons/crond/src/main.rs |
-    tee crates/daemons/pushd/src/main.rs |
-    tee crates/daemons/voice-ingress/src/main.rs
-  echo '' |
-    tee crates/core/config/src/lib.rs |
-    tee crates/core/database/src/lib.rs |
-    tee crates/core/files/src/lib.rs |
-    tee crates/core/models/src/lib.rs |
-    tee crates/core/parser/src/lib.rs |
-    tee crates/core/permissions/src/lib.rs |
-    tee crates/core/presence/src/lib.rs |
-    tee crates/core/result/src/lib.rs |
-    tee crates/core/coalesced/src/lib.rs |
-    tee crates/core/ratelimits/src/lib.rs
-  
+  for app in $APPS; do
+    mkdir -p "crates/$app/src"
+    echo 'fn main() { panic!("stub"); }' > "crates/$app/src/main.rs"
+  done
+  for lib in $LIBS; do
+    mkdir -p "crates/core/$lib/src"
+    echo '' > "crates/core/$lib/src/lib.rs"
+  done
+
   if [ -z "$TARGETARCH" ]; then
     cargo build -j "${CARGO_BUILD_JOBS:-10}" --locked --release
   else
@@ -71,22 +43,9 @@ deps() {
 }
 
 apps() {
-  touch -am \
-    crates/bonfire/src/main.rs \
-    crates/delta/src/main.rs \
-    crates/daemons/crond/src/main.rs \
-    crates/daemons/pushd/src/main.rs \
-    crates/daemons/voice-ingress/src/main.rs \
-    crates/core/config/src/lib.rs \
-    crates/core/database/src/lib.rs \
-    crates/core/models/src/lib.rs \
-    crates/core/parser/src/lib.rs \
-    crates/core/permissions/src/lib.rs \
-    crates/core/presence/src/lib.rs \
-    crates/core/result/src/lib.rs \
-    crates/core/coalesced/src/lib.rs \
-    crates/core/ratelimits/src/lib.rs
-  
+  for app in $APPS; do touch -am "crates/$app/src/main.rs"; done
+  for lib in $LIBS; do touch -am "crates/core/$lib/src/lib.rs"; done
+
   if [ -z "$TARGETARCH" ]; then
     cargo build -j "${CARGO_BUILD_JOBS:-10}" --locked --release
   else

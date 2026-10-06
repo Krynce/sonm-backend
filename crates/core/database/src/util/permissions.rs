@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use revolt_permissions::{
-    calculate_user_permissions, ChannelType, Override, PermissionQuery, PermissionValue,
-    RelationshipStatus, DEFAULT_PERMISSION_DIRECT_MESSAGE,
+use sonm_permissions::{
+    ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, Override, PermissionQuery, PermissionValue,
+    RelationshipStatus, calculate_user_permissions,
 };
 
 use crate::{Channel, Database, Member, Server, User};
@@ -450,22 +450,22 @@ impl<'a> DatabasePermissionQuery<'a> {
     }
 
     /// Access the underlying user
-    pub fn user_ref(&self) -> &Option<Cow<User>> {
+    pub fn user_ref(&self) -> &Option<Cow<'_, User>> {
         &self.user
     }
 
     /// Access the underlying server
-    pub fn channel_ref(&self) -> &Option<Cow<Channel>> {
+    pub fn channel_ref(&self) -> &Option<Cow<'_, Channel>> {
         &self.channel
     }
 
     /// Access the underlying server
-    pub fn server_ref(&self) -> &Option<Cow<Server>> {
+    pub fn server_ref(&self) -> &Option<Cow<'_, Server>> {
         &self.server
     }
 
     /// Access the underlying member
-    pub fn member_ref(&self) -> &Option<Cow<Member>> {
+    pub fn member_ref(&self) -> &Option<Cow<'_, Member>> {
         &self.member
     }
 

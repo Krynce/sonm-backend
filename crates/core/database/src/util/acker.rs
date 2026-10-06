@@ -1,8 +1,8 @@
-use redis_kiss::{get_connection, AsyncCommands};
-use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
-use revolt_result::{Result, ToRevoltError};
+use redis_kiss::{AsyncCommands, get_connection};
+use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_result::{Result, ToSonmError};
 
-use crate::{events::client::EventV1, Channel, Database, Server, User, AMQP};
+use crate::{AMQP, Channel, Database, Server, User, events::client::EventV1};
 
 pub async fn ack_channel(user: &str, channel: &str, message: &str, amqp: &AMQP) -> Result<()> {
     let mut redis = get_connection()

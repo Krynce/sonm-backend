@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use revolt_result::Result;
 #[cfg(feature = "rocket-impl")]
 use rocket::request::FromParam;
 #[cfg(feature = "rocket-impl")]
 use schemars::{
-    schema::{InstanceType, Schema, SchemaObject, SingleOrVec},
     JsonSchema,
+    schema::{InstanceType, Schema, SchemaObject, SingleOrVec},
 };
+use sonm_result::Result;
 
 use crate::{
     Bot, Channel, Database, Emoji, Invite, Member, Message, Server, ServerBan, User, Webhook,

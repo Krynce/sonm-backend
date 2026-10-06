@@ -1,19 +1,17 @@
 #![allow(deprecated)]
 use std::{borrow::Cow, collections::HashMap};
 
-use redis_kiss::get_connection;
-use revolt_config::config;
-use revolt_models::v0::{self, MessageAuthor};
-use revolt_permissions::OverrideField;
-use revolt_result::Result;
 use serde::{Deserialize, Serialize};
+use sonm_config::config;
+use sonm_models::v0::{self, MessageAuthor};
+use sonm_permissions::OverrideField;
+use sonm_result::Result;
 use ulid::Ulid;
 
 use crate::{
-    events::client::EventV1, Database, File, PartialServer, Server, SystemMessage, User, AMQP,
+    AMQP, Database, File, PartialServer, Server, SystemMessage, User, events::client::EventV1,
 };
 
-#[cfg(feature = "mongodb")]
 use crate::IntoDocumentPath;
 
 auto_derived!(
@@ -445,7 +443,7 @@ impl Channel {
     }
 
     /// Gets this channel's voice information
-    pub fn voice(&self) -> Option<Cow<VoiceInformation>> {
+    pub fn voice(&self) -> Option<Cow<'_, VoiceInformation>> {
         match self {
             Self::DirectMessage { .. } | Self::Group { .. } => {
                 Some(Cow::Owned(VoiceInformation::default()))
@@ -887,7 +885,6 @@ impl Channel {
     }
 }
 
-#[cfg(feature = "mongodb")]
 impl IntoDocumentPath for FieldsChannel {
     fn as_path(&self) -> Option<&'static str> {
         Some(match self {
@@ -902,9 +899,9 @@ impl IntoDocumentPath for FieldsChannel {
 
 #[cfg(test)]
 mod tests {
-    use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
-    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
     use crate::{fixture, util::permissions::DatabasePermissionQuery};
+    use lapin::{ExchangeKind, options::ExchangeDeclareOptions, types::FieldTable};
+    use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
 
     #[tokio::test]
     async fn permissions_group_channel() {
@@ -916,19 +913,25 @@ mod tests {
                 channel channel 3);
 
             let mut query = DatabasePermissionQuery::new(&db, &owner).channel(&channel);
-            assert!(calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &member1).channel(&channel);
-            assert!(calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &member2).channel(&channel);
-            assert!(!calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                !calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
         });
     }
 
@@ -942,19 +945,25 @@ mod tests {
                 channel channel 3);
 
             let mut query = DatabasePermissionQuery::new(&db, &owner).channel(&channel);
-            assert!(calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &moderator).channel(&channel);
-            assert!(calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
 
             let mut query = DatabasePermissionQuery::new(&db, &user).channel(&channel);
-            assert!(!calculate_channel_permissions(&mut query)
-                .await
-                .has_channel_permission(ChannelPermission::SendMessage));
+            assert!(
+                !calculate_channel_permissions(&mut query)
+                    .await
+                    .has_channel_permission(ChannelPermission::SendMessage)
+            );
         });
     }
 }

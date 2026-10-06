@@ -1,5 +1,5 @@
-use iso8601_timestamp::{Timestamp};
-use revolt_result::{create_error, Result};
+use iso8601_timestamp::Timestamp;
+use sonm_result::{Result, create_error};
 
 use crate::{Channel, Database, User};
 
@@ -91,24 +91,22 @@ impl Invite {
                 uses: 0,
                 expires,
             }),
-            Channel::TextChannel { id, server, .. } => {
-                Ok(Invite::Server {
-                    code,
-                    creator: creator.id.clone(),
-                    server: server.clone(),
-                    channel: id.clone(),
-                    max_uses,
-                    uses: 0,
-                    expires,
-                })
-            }
+            Channel::TextChannel { id, server, .. } => Ok(Invite::Server {
+                code,
+                creator: creator.id.clone(),
+                server: server.clone(),
+                channel: id.clone(),
+                max_uses,
+                uses: 0,
+                expires,
+            }),
             _ => Err(create_error!(InvalidOperation)),
         }?;
 
         db.insert_invite(&invite).await?;
         Ok(invite)
     }
-    
+
     /// Resolve an invite by its ID or by a public server ID
     pub async fn find(db: &Database, code: &str) -> Result<Invite> {
         if let Ok(invite) = db.fetch_invite(code).await {

@@ -8,8 +8,8 @@ mod r#impl;
 mod models;
 mod r#trait;
 
-pub use models::*;
 pub use r#impl::*;
+pub use models::*;
 pub use r#trait::*;
 
 #[cfg(test)]

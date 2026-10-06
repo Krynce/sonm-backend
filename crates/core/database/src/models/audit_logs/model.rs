@@ -1,13 +1,15 @@
 use std::{collections::HashSet, time::Duration};
 
 use iso8601_timestamp::Timestamp;
-use revolt_config::config;
+use sonm_config::config;
 use ulid::Ulid;
 
-use crate::{Database, PartialChannel, PartialMember, PartialRole, PartialServer, User, PartialEmoji};
-use revolt_models::v0;
-use revolt_permissions::OverrideField;
-use revolt_result::Result;
+use crate::{
+    Database, PartialChannel, PartialEmoji, PartialMember, PartialRole, PartialServer, User,
+};
+use sonm_models::v0;
+use sonm_permissions::OverrideField;
+use sonm_result::Result;
 
 auto_derived!(
     /// Audit log entry
@@ -195,7 +197,7 @@ impl AuditLogEntryAction {
             let db = db.clone();
             let entry = entry.clone();
 
-            async move { revolt_config::report_internal_error!(db.insert_audit_log_entry(&entry).await) }
+            async move { sonm_config::report_internal_error!(db.insert_audit_log_entry(&entry).await) }
         });
 
         #[cfg(test)]

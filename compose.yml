@@ -1,3 +1,5 @@
+name: sonm-backend
+
 services:
   # Redis
   redis:
@@ -32,8 +34,8 @@ services:
     image: mirror.gcr.io/pgsty/silo
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioautumn
-      MINIO_ROOT_PASSWORD: minioautumn
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
       MINIO_REGION: minio
     volumes:
       - ./.data/minio:/data
@@ -49,9 +51,9 @@ services:
       - minio
     entrypoint: >
       /bin/sh -c "while ! /usr/bin/mc ready minio; do
-        /usr/bin/mc alias set minio http://minio:9000 minioautumn minioautumn;
+        /usr/bin/mc alias set minio http://minio:9000 minioadmin minioadmin;
         echo 'Waiting minio...' && sleep 1;
-      done; /usr/bin/mc mb minio/revolt-uploads; exit 0;"
+      done; /usr/bin/mc mb minio/sonm-uploads; exit 0;"
 
   # Rabbit
   rabbit:

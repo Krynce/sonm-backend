@@ -2,7 +2,7 @@ use bson::Document;
 use futures::StreamExt;
 use iso8601_timestamp::Timestamp;
 use mongodb::options::ReadConcern;
-use revolt_result::Result;
+use sonm_result::Result;
 
 use crate::{FieldsMember, Member, MemberCompositeKey, PartialMember};
 use crate::{IntoDocumentPath, MongoDb};
@@ -88,12 +88,12 @@ impl AbstractServerMembers for MongoDb {
     }
 
     /// Fetch all members in a server as a generator.
-    /// Uses config key pushd.mass_mention_chunk_size as the batch size.
+    /// Uses config key push.mass_mention_chunk_size as the batch size.
     async fn fetch_all_members_chunked(
         &self,
         server_id: &str,
     ) -> Result<ChunkedServerMembersGenerator> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let mut session = self
             .start_session()
@@ -112,7 +112,7 @@ impl AbstractServerMembers for MongoDb {
                 "_id.server": server_id
             })
             .session(&mut session)
-            .batch_size(config.pushd.mass_mention_chunk_size as u32)
+            .batch_size(config.push.mass_mention_chunk_size as u32)
             .await
             .map_err(|_| create_database_error!("find", COL))?;
 
@@ -148,7 +148,7 @@ impl AbstractServerMembers for MongoDb {
         server_id: &str,
         roles: &[String],
     ) -> Result<ChunkedServerMembersGenerator> {
-        let config = revolt_config::config().await;
+        let config = sonm_config::config().await;
 
         let mut session = self
             .start_session()
@@ -168,7 +168,7 @@ impl AbstractServerMembers for MongoDb {
                 "roles": {"$in": roles}
             })
             .session(&mut session)
-            .batch_size(config.pushd.mass_mention_chunk_size as u32)
+            .batch_size(config.push.mass_mention_chunk_size as u32)
             .await
             .map_err(|_| create_database_error!("find", COL))?;
 
@@ -268,7 +268,7 @@ impl AbstractServerMembers for MongoDb {
 
     /// Marks a member for deletion.
     /// This will remove the record if the user has no pending actions (eg. timeout),
-    /// otherwise will slate the record for deletion by revolt_crond once the actions expire.
+    /// otherwise will slate the record for deletion by sonm_scheduler once the actions expire.
     async fn soft_delete_member(&self, id: &MemberCompositeKey) -> Result<()> {
         let member = self.fetch_member(&id.server, &id.user).await;
         if let Ok(member) = member {

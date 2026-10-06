@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run voice (LiveKit webhook) service"
+set -e
+
+cargo run --bin sonm-voice

@@ -1,0 +1,38 @@
+[package]
+name = "sonm-push"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+sonm-result = { workspace = true }
+sonm-config = { workspace = true, features = ["report-macros", "anyhow"] }
+sonm-database = { workspace = true }
+sonm-models = { workspace = true, features = ["validator"] }
+sonm-presence = { workspace = true, features = ["redis-is-patched"] }
+sonm-parser = { workspace = true }
+
+anyhow = { workspace = true }
+
+lapin = { workspace = true }
+web-push = { workspace = true }
+isahc = { workspace = true, features = ["json"], optional = true }
+redis-kiss = { workspace = true, default-features = false, features = [
+    "tokio-runtime",
+] }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+ulid = { workspace = true }
+
+log = { workspace = true }
+pretty_env_logger = { workspace = true }
+
+regex = { workspace = true }
+
+#serialization
+serde_json = { workspace = true }
+revolt_optional_struct = { workspace = true }
+serde = { workspace = true }
+iso8601-timestamp = { workspace = true, features = ["serde", "bson"] }
+base64 = { workspace = true }
