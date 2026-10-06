@@ -1,0 +1,23 @@
+environment = "test"
+
+[database]
+mongodb = "mongodb://localhost"
+redis = "redis://localhost/"
+
+[rabbit]
+host = "127.0.0.1"
+port = 5672
+username = "rabbituser"
+password = "rabbitpass"
+
+[features]
+webhooks_enabled = true
+
+[api.smtp]
+host = "localhost"
+username = "smtp"
+password = "smtp"
+from_address = "development@sonm.local"
+reply_to = "support@sonm.local"
+port = 14025
+use_tls = false
