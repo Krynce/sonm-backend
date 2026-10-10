@@ -243,7 +243,8 @@ services:
     <<: *public
     image: ghcr.io/krynce/sonm-web:${WEB_TAG:?}
     restart: always
-    mem_limit: 64m
+    # Node грузит бандл в память на этапе inject.js: 64m убивало контейнер (OOM 137)
+    mem_limit: 256m
     logging: *logging
     environment:
       VITE_API_URL: https://${DOMAIN:?}/api
