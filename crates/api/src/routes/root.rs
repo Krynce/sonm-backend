@@ -206,16 +206,19 @@ pub async fn root() -> Result<Json<SonmConfig>> {
                     .nodes
                     .iter()
                     .filter(|(_, node)| !node.private)
-                    .map(|(name, value)| VoiceNode {
-                        name: name.clone(),
-                        lat: value.lat,
-                        lon: value.lon,
-                        public_url: config
-                            .hosts
-                            .livekit
-                            .get(name)
-                            .expect("Missing corresponding host for voice node")
-                            .clone(),
+                    .filter_map(|(name, value)| match config.hosts.livekit.get(name) {
+                        Some(public_url) => Some(VoiceNode {
+                            name: name.clone(),
+                            lat: value.lat,
+                            lon: value.lon,
+                            public_url: public_url.clone(),
+                        }),
+                        None => {
+                            // Config error; skipping the node beats failing the endpoint that
+                            // every client polls.
+                            log::error!("Missing corresponding host for voice node {name}");
+                            None
+                        }
                     })
                     .collect(),
             },

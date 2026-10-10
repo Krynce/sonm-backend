@@ -1,4 +1,5 @@
-# Non-secret production config. Secrets (VAPID, files key, LiveKit) live in secrets.env as SONM__*.
+# Non-secret production config. Secrets (VAPID, files key, LiveKit, S3, RabbitMQ) live in
+# secrets.env as SONM__*.
 # Replace chat.krynce.ru if the domain ever changes.
 
 [database]
@@ -21,8 +22,8 @@ lat = 0.0
 lon = 0.0
 
 [files.s3]
-access_key_id = "minioautumn"
-secret_access_key = "minioautumn"
+# access_key_id / secret_access_key: SONM__FILES__S3__ACCESS_KEY_ID and
+# SONM__FILES__S3__SECRET_ACCESS_KEY in secrets.env, same values as MINIO_ROOT_* in .env.
 default_bucket = "revolt-uploads"
 
 # Copied from the generated Revolt.toml (camera and screen sharing enabled).

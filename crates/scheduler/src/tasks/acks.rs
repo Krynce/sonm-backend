@@ -68,29 +68,50 @@ pub async fn task(db: Database, amqp: AMQP) -> Result<()> {
 
     while let Some(delivery) = consumer.next().await {
         if let Ok(delivery) = delivery {
-            let payload = serde_json::from_slice::<AckEventPayload>(&delivery.data);
+            // Anything we cannot act on still has to be answered, or the prefetch slot leaks.
+            let target = match serde_json::from_slice::<AckEventPayload>(&delivery.data) {
+                Ok(payload) => {
+                    debug!("Received ack event: {payload:?}");
 
-            if let Ok(payload) = payload {
-                debug!("Received ack event: {payload:?}");
-
-                if let Err(e) = process_channel_ack(
-                    &db,
-                    payload.user_id,
-                    payload.channel_id.unwrap(),
-                    &mut redis,
-                )
-                .await
-                {
-                    sonm_config::capture_error(&e);
-                    _ = delivery.reject(BasicRejectOptions { requeue: false }).await;
-                } else {
-                    _ = delivery.ack(BasicAckOptions { multiple: false }).await;
+                    match payload.channel_id {
+                        Some(channel_id) => Some((payload.user_id, channel_id)),
+                        None => {
+                            sonm_config::capture_message(
+                                "Received ack event without a channel id",
+                                sonm_config::Level::Error,
+                            );
+                            None
+                        }
+                    }
                 }
+                Err(_) => {
+                    sonm_config::capture_message(
+                        format!("Failed to decode ack data: {:?}", delivery.data).as_str(),
+                        sonm_config::Level::Error,
+                    );
+                    None
+                }
+            };
+
+            let Some((user_id, channel_id)) = target else {
+                _ = delivery.reject(BasicRejectOptions { requeue: false }).await;
+                continue;
+            };
+
+            let redelivered = delivery.redelivered;
+
+            if let Err(e) = process_channel_ack(&db, user_id, channel_id, &mut redis).await {
+                sonm_config::capture_error(&e);
+
+                // Give it one more go (likely a database blip), then drop it: this queue has
+                // no dead-letter exchange.
+                _ = delivery
+                    .reject(BasicRejectOptions {
+                        requeue: !redelivered,
+                    })
+                    .await;
             } else {
-                sonm_config::capture_message(
-                    format!("Failed to decode ack data: {:?}", delivery.data).as_str(),
-                    sonm_config::Level::Error,
-                );
+                _ = delivery.ack(BasicAckOptions { multiple: false }).await;
             }
         }
     }
@@ -113,9 +134,10 @@ async fn process_channel_ack(
         db.acknowledge_message(&channel, &user, &message_id).await?;
 
         info!("Set new state for ack: {}:{}:{}", channel, user, message_id);
-
-        Ok(())
     } else {
-        Err(message_id.to_internal_error().expect_err("no err"))
+        // Normal race: the pending key was already consumed by another delivery.
+        debug!("No pending ack for {channel}:{user}");
     }
+
+    Ok(())
 }

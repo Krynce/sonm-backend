@@ -840,9 +840,12 @@ impl User {
         let badges = self.badges.unwrap_or_default() as u32;
 
         if let Some(cutoff) = config.api.users.early_adopter_cutoff {
-            if Ulid::from_string(&self.id).unwrap().timestamp_ms() < cutoff {
+            // A non-ULID id must not take down every connection this user appears in.
+            if let Ok(id) = Ulid::from_string(&self.id)
+                && id.timestamp_ms() < cutoff
+            {
                 return badges + UserBadges::EarlyAdopter as u32;
-            };
+            }
         };
 
         badges

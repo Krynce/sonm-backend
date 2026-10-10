@@ -70,12 +70,15 @@ impl MongoDb {
             .find(projection)
             .with_options(options)
             .await?
-            .filter_map(|s| async {
-                if cfg!(debug_assertions) {
-                    // Hard fail on invalid documents
-                    Some(s.unwrap())
-                } else {
-                    s.ok()
+            .filter_map(move |s| async move {
+                // One undeserialisable document must not take the whole query (or the process,
+                // in debug builds) down with it.
+                match s {
+                    Ok(document) => Some(document),
+                    Err(error) => {
+                        log::error!("Skipping bad document in {collection}: {error}");
+                        None
+                    }
                 }
             })
             .collect::<Vec<T>>()

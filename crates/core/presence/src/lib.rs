@@ -165,7 +165,13 @@ pub async fn filter_online(user_ids: &'_ [String]) -> HashSet<String> {
 /// Reset any stale presence data
 pub async fn clear_region(region_id: Option<&str>) {
     let region_id = region_id.unwrap_or(&*REGION_KEY);
-    let mut conn = get_connection().await.expect("Redis connection");
+
+    // Every other function here degrades gracefully without Redis; refusing to boot is worse
+    // than starting with stale presence data.
+    let Ok(mut conn) = get_connection().await else {
+        error!("Could not reach Redis to clear stale presence data for {region_id}.");
+        return;
+    };
 
     let sessions = __get_set_members_as_string(&mut conn, region_id).await;
     if !sessions.is_empty() {

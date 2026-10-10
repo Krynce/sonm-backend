@@ -124,6 +124,11 @@ impl IntoResponse for Error {
             ErrorType::IncorrectData { .. } => StatusCode::BAD_REQUEST,
         };
 
+        // The source location is no longer sent to the client, so keep it in the log.
+        if status.is_server_error() {
+            log::error!("{self}");
+        }
+
         (status, Json(&self)).into_response()
     }
 }

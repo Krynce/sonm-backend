@@ -211,7 +211,8 @@ impl State {
             SubscriptionStateChange::Change { remove, .. } => {
                 remove.push(subscription.to_string());
             }
-            SubscriptionStateChange::Reset => panic!("Should not remove during a reset!"),
+            // The whole subscription set is re-sent on reset, so dropping it from the set is enough.
+            SubscriptionStateChange::Reset => {}
         }
 
         subscribed.remove(subscription);

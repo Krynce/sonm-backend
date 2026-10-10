@@ -129,6 +129,11 @@ impl<'r> Responder<'r, 'static> for Error {
             ErrorType::IncorrectData { .. } => Status::BadRequest,
         };
 
+        // The source location is no longer sent to the client, so keep it in the log.
+        if status.code >= 500 {
+            log::error!("{self}");
+        }
+
         // Serialize the error data structure into JSON.
         let string = serde_json::to_string(&self).unwrap();
 

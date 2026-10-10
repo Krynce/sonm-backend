@@ -58,19 +58,14 @@ impl serde::Serialize for Error {
             location: Option<&'a str>,
         }
 
-        let location = match self.error_type {
-            ErrorType::InvalidCredentials
-            | ErrorType::InvalidSession
-            | ErrorType::InvalidToken
-            | ErrorType::UnverifiedAccount
-            | ErrorType::LockedOut
-            | ErrorType::DisallowedMFAMethod => None,
-            _ => Some(self.location.as_deref().unwrap()),
-        };
-
         Body {
             error_type: &self.error_type,
-            location,
+            // The location is a source path; it belongs in the logs, not in the response.
+            location: if cfg!(debug_assertions) {
+                self.location.as_deref()
+            } else {
+                None
+            },
         }
         .serialize(serializer)
     }
@@ -267,15 +262,6 @@ macro_rules! create_database_error {
 }
 
 #[macro_export]
-#[cfg(debug_assertions)]
-macro_rules! query {
-    ( $self: ident, $type: ident, $collection: expr, $($rest:expr),+ ) => {
-        Ok($self.$type($collection, $($rest),+).await.unwrap())
-    };
-}
-
-#[macro_export]
-#[cfg(not(debug_assertions))]
 macro_rules! query {
     ( $self: ident, $type: ident, $collection: expr, $($rest:expr),+ ) => {
         $self.$type($collection, $($rest),+).await

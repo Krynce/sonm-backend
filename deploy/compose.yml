@@ -63,8 +63,9 @@ services:
     mem_limit: 384m
     logging: *logging
     environment:
-      RABBITMQ_DEFAULT_USER: rabbituser
-      RABBITMQ_DEFAULT_PASS: rabbitpass
+      # Must match SONM__RABBIT__USERNAME/__PASSWORD in secrets.env.
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS:?}
     configs:
       - source: rabbit_conf
         target: /etc/rabbitmq/conf.d/10-sonm.conf
@@ -88,8 +89,10 @@ services:
     volumes:
       - ${DATA_DIR:?}/minio:/data
     environment:
-      MINIO_ROOT_USER: minioautumn
-      MINIO_ROOT_PASSWORD: minioautumn
+      # Credentials live in .env next to this file; :? makes compose refuse to start without them,
+      # which is what keeps a missing .env from silently resetting them.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
       MINIO_DOMAIN: minio
     networks:
       default:

@@ -688,24 +688,39 @@ const LIGHT_ORANGE: &str = "#d9916d";
 // for future use
 // const WHITE: &str = "#c3e1c3";
 
-fn shorten_single_line_text(text: &str, length: usize) -> String {
-    if text.contains('\n') {
-        let text = text.split('\n').next().unwrap();
-
-        format!("{}...", &text[..text.len().min(length) - 3])
-    } else if text.len() > length {
-        format!("{}...", &text[..length - 3])
+/// Cut `text` down to at most `length` characters, appending `...` when something was cut.
+fn shorten_text(text: &str, length: usize) -> String {
+    if text.chars().count() > length {
+        format!(
+            "{}...",
+            text.chars()
+                .take(length.saturating_sub(3))
+                .collect::<String>()
+        )
     } else {
         text.to_string()
     }
 }
 
-fn shorten_text(text: &str, length: usize) -> String {
-    if text.len() >= length {
-        format!("{}...", &text[..length - 3])
-    } else {
-        text.to_string()
+/// Same as [`shorten_text`], but keeps only the first line.
+fn shorten_single_line_text(text: &str, length: usize) -> String {
+    match text.split_once('\n') {
+        Some((first, _)) => {
+            let shortened = shorten_text(first, length);
+
+            if shortened.ends_with("...") {
+                shortened
+            } else {
+                format!("{shortened}...")
+            }
+        }
+        None => shorten_text(text, length),
     }
+}
+
+/// First 8 characters of a commit SHA, or the whole thing if it is shorter.
+fn short_sha(id: &str) -> String {
+    id.chars().take(8).collect()
 }
 
 fn safe_from_str<T: for<'de> Deserialize<'de>>(data: &str) -> Result<T> {
@@ -807,7 +822,7 @@ pub async fn webhook_execute_github(
                     "#### [{}] Branch {} was force-pushed to {}\n[compare changes]({})",
                     event.repository.full_name,
                     branch,
-                    &after[0..=7],
+                    &short_sha(&after),
                     compare
                 );
 
@@ -833,7 +848,7 @@ pub async fn webhook_execute_github(
                         .map(|commit| {
                             format!(
                                 "[`{}`]({}) {} - {}",
-                                &commit.id[0..=7],
+                                &short_sha(&commit.id),
                                 commit.url,
                                 shorten_single_line_text(&commit.message, 50),
                                 commit.author.name
@@ -856,7 +871,7 @@ pub async fn webhook_execute_github(
         }
         BaseEvent::CommitComment(CommitCommentEvent { comment }) => {
             let commit_id = match comment.commit_id {
-                Some(id) => id[0..=7].to_string(),
+                Some(id) => short_sha(&id),
                 None => "".to_string(),
             };
 
@@ -1104,4 +1119,31 @@ pub async fn webhook_execute_github(
             false,
         )
         .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{short_sha, shorten_single_line_text, shorten_text};
+
+    #[test]
+    fn shortening_respects_character_boundaries() {
+        // non-ASCII used to panic on the byte slice
+        assert_eq!(shorten_text("привет мир", 5), "пр...");
+        assert_eq!(shorten_text("🎉🎉🎉🎉🎉", 4), "🎉...");
+        // nothing to cut
+        assert_eq!(shorten_text("привет", 10), "привет");
+        assert_eq!(shorten_text("", 10), "");
+        // used to underflow: first line shorter than the ellipsis
+        assert_eq!(shorten_single_line_text("ab\ncd", 50), "ab...");
+        assert_eq!(shorten_single_line_text("я\nещё", 50), "я...");
+        assert_eq!(shorten_single_line_text("привет мир\nx", 5), "пр...");
+        assert_eq!(shorten_single_line_text("привет", 10), "привет");
+    }
+
+    #[test]
+    fn short_sha_survives_short_input() {
+        assert_eq!(short_sha("0123456789abcdef"), "01234567");
+        assert_eq!(short_sha("abc"), "abc");
+        assert_eq!(short_sha(""), "");
+    }
 }

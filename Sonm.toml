@@ -45,8 +45,10 @@ use_starttls = false
 [api.livekit]
 
 # Config for livekit nodes
-# Make sure to change the secret when deploying
-# The key and secret should match the values livekit is using
+# The key and secret should match the values livekit is using.
+# The secret below is the development pair from livekit.example.yml and is public by design.
+# In production it must be overridden with SONM__API__LIVEKIT__NODES__WORLDWIDE__SECRET
+# (see deploy/PHASE1.md).
 [api.livekit.nodes.worldwide]
 url = "http://livekit"
 lat = 0.0

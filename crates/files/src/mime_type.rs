@@ -10,11 +10,13 @@ pub fn determine_mime_type(f: &mut NamedTempFile, buf: &[u8], file_name: &str) -
     }
 
     // Use magic signatures to determine mime type
-    let kind = infer::get_from_path(f.path()).expect("file read successfully");
-    let mime_type = if let Some(kind) = kind {
-        kind.mime_type()
-    } else {
-        "application/octet-stream"
+    let mime_type = match infer::get_from_path(f.path()) {
+        Ok(Some(kind)) => kind.mime_type(),
+        Ok(None) => "application/octet-stream",
+        Err(error) => {
+            tracing::error!("Failed to read uploaded file for mime detection: {error}");
+            "application/octet-stream"
+        }
     };
 
     // See if the file is actually just plain Unicode/ASCII text

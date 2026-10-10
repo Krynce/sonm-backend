@@ -66,13 +66,27 @@ lazy_static! {
         "192.168.0.0/16",
         "127.0.0.0/8",
         "172.16.0.0/12",
-        "169.254.0.0/16",
+        "169.254.0.0/16",   // link-local, incl. the cloud metadata address
+        "100.64.0.0/10",    // CGNAT
+        "192.0.0.0/24",     // IETF protocol assignments
+        "198.18.0.0/15",    // benchmarking
+        "224.0.0.0/4",      // multicast
         "::1",
         "::",
-        "fc00::/7",
-        "fc00::/10"
+        "fc00::/7",         // unique local, covers fc00::/10 and fd00::/8
+        "fe80::/10",        // link-local
+        "ff00::/8",         // multicast
         ]
     ).unwrap();
+}
+
+/// Check a resolved address against [`IP_BLOCKLIST`]
+///
+/// IPv4-mapped IPv6 addresses are rejected outright: the filter would not match them against the
+/// IPv4 ranges above.
+fn ip_is_allowed(ip: &IpAddr) -> bool {
+    let string = ip.to_string();
+    !string.contains("::ffff:") && IP_BLOCKLIST.is_allowed(&string)
 }
 
 /// Maximum size of a response body this service will pull into memory
@@ -134,22 +148,6 @@ async fn proxy_cache() -> &'static moka::future::Cache<String, Result<(String, V
         .await
 }
 
-#[derive(Clone)]
-pub struct IPRequest {
-    url: Url,
-    ip: IpAddr,
-    pub blocked: bool,
-}
-
-impl From<IPRequest> for Url {
-    fn from(value: IPRequest) -> Self {
-        let mut url = value.url.clone();
-        url.set_host(Some(&value.ip.to_string()))
-            .map(|_| url)
-            .unwrap_or(value.url)
-    }
-}
-
 struct CachedDnsResolver {}
 
 impl reqwest::dns::Resolve for CachedDnsResolver {
@@ -171,6 +169,17 @@ impl reqwest::dns::Resolve for CachedDnsResolver {
                 .await
                 .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
                 .collect();
+
+            // Filtering here rather than only before the request is what closes DNS rebinding:
+            // this is the resolution the connection actually uses, redirects included.
+            if let Some(blocked) = fallback.iter().find(|addr| !ip_is_allowed(&addr.ip())) {
+                return Err(format!(
+                    "{} resolves to blocked address {}",
+                    name.as_str(),
+                    blocked.ip()
+                )
+                .into());
+            }
 
             {
                 DNS_CACHE
@@ -268,10 +277,9 @@ impl Request {
                 }
             };
 
-            if let Some((width, height)) = image_size_vec(
-                &read_body(request.response).await?,
-                request.mime.as_ref(),
-            ) {
+            if let Some((width, height)) =
+                image_size_vec(&read_body(request.response).await?, request.mime.as_ref())
+            {
                 Ok(Some(Image {
                     url: url.to_owned(),
                     width,
@@ -307,9 +315,7 @@ impl Request {
             };
 
             let mut file = report_internal_error!(tempfile::NamedTempFile::new())?;
-            report_internal_error!(
-                file.write_all(&read_body(response).await?)
-            )?;
+            report_internal_error!(file.write_all(&read_body(response).await?))?;
 
             if let Some((width, height)) = video_size(&file) {
                 Ok(Some(Video {
@@ -403,11 +409,7 @@ impl Request {
         let mut url = url;
         let url_host_str = url.host_str().ok_or(create_error!(ProxyError))?.to_string();
 
-        let mut blocker = Request::url_is_blacklisted(&url).await?;
-
-        if blocker.blocked {
-            return Err(create_error!(InvalidOperation));
-        }
+        Request::ensure_url_allowed(&url).await?;
 
         let mut redirect_count = 0;
 
@@ -437,11 +439,7 @@ impl Request {
                     let location = location.to_str().map_err(|_| create_error!(ProxyError))?;
                     url = Url::from_str(location).to_internal_error()?;
 
-                    blocker = Request::url_is_blacklisted(&url).await?;
-
-                    if blocker.blocked {
-                        return Err(create_error!(InvalidOperation));
-                    }
+                    Request::ensure_url_allowed(&url).await?;
 
                     continue;
                 } else {
@@ -474,93 +472,88 @@ impl Request {
         Request::new(proper_url).await
     }
 
-    /// Check if something exists
-    pub async fn exists(url: Url) -> bool {
-        if let Ok(response) = CLIENT.head(url).send().await {
-            response.status().is_success()
-        } else {
-            false
-        }
-    }
-
-    pub async fn exists_from_str(url: &str) -> Result<bool> {
-        let proper_url = Url::parse(url).map_err(|_| create_error!(ProxyError))?;
-        Ok(Request::exists(proper_url).await)
-    }
-
-    pub async fn url_is_blacklisted(url: &Url) -> Result<IPRequest> {
-        let mut resolved_address: Option<IpAddr> = None;
-
-        if let Some(host) = url.host() {
-            match host {
-                Host::Ipv4(ipv4) => {
-                    if !IP_BLOCKLIST.is_allowed(&ipv4.to_string()) {
-                        return Err(create_error!(InvalidOperation));
-                    }
-                    resolved_address = Some(ipv4.into());
-                }
-                Host::Ipv6(ipv6) => {
-                    let string = ipv6.to_string();
-                    if string.contains("::ffff:") || !IP_BLOCKLIST.is_allowed(&string) {
-                        return Err(create_error!(InvalidOperation));
-                    }
-                    resolved_address = Some(ipv6.into());
-                }
-                Host::Domain(domain) => {
-                    let domain = domain.to_string();
-
-                    let config = config().await;
-
-                    // First step: TLDs and blocked domains
-                    if !domain.contains(".") // lazily block TLDs
-                        || config.embeds.blocked_domains.iter().any(|x| x == &domain)
-                    {
-                        return Err(create_error!(InvalidOperation));
-                    }
-
-                    // Second step: resolve the IP and check the blocklist
-                    let resolver = CachedDnsResolver {};
-                    if let Ok(resolved_ips) = resolver
-                        .resolve(
-                            Name::from_str(&domain)
-                                .map_err(|_| create_error!(ProxyError))
-                                .unwrap(),
-                        )
-                        .await
-                    {
-                        for resolved in resolved_ips {
-                            resolved_address = Some(resolved.ip()); // last resolved ip will be the one we hit as a consequence of this for loop.
-                            let resolved_string = resolved_address.unwrap().to_string();
-                            if !IP_BLOCKLIST.is_allowed(&resolved_string)
-                                || resolved_string.contains("::ffff:")
-                            {
-                                return Err(create_error!(InvalidOperation));
-                            }
-                        }
-                    } else {
-                        return Err(create_error!(ProxyError));
-                    }
+    /// Refuse URLs pointing at anything but a public address
+    ///
+    /// For domains this is only the first gate; the resolution the connection actually uses is
+    /// filtered in [`CachedDnsResolver`].
+    pub async fn ensure_url_allowed(url: &Url) -> Result<()> {
+        match url.host() {
+            Some(Host::Ipv4(ipv4)) => {
+                if !ip_is_allowed(&ipv4.into()) {
+                    return Err(create_error!(InvalidOperation));
                 }
             }
-        } else {
-            return Err(create_error!(ProxyError));
-        };
+            Some(Host::Ipv6(ipv6)) => {
+                if !ip_is_allowed(&ipv6.into()) {
+                    return Err(create_error!(InvalidOperation));
+                }
+            }
+            Some(Host::Domain(domain)) => {
+                let config = config().await;
 
-        if resolved_address.is_none() {
-            return Err(create_error!(InvalidOperation));
+                if !domain.contains(".") // lazily block TLDs
+                    || config.embeds.blocked_domains.iter().any(|x| x == domain)
+                {
+                    return Err(create_error!(InvalidOperation));
+                }
+
+                // Resolve once up front so a blocked host fails here rather than mid-request;
+                // the resolver caches and filters, so the connection cannot land elsewhere.
+                let name = Name::from_str(domain).map_err(|_| create_error!(ProxyError))?;
+
+                // The addresses themselves are not needed here, only that the lookup succeeded
+                // and passed the filter; the connection resolves through the same cache.
+                let _ = CachedDnsResolver {}
+                    .resolve(name)
+                    .await
+                    .map_err(|_| create_error!(ProxyError))?;
+            }
+            None => return Err(create_error!(ProxyError)),
         }
 
-        Ok(IPRequest {
-            url: url.clone(),
-            ip: resolved_address.unwrap(),
-            blocked: false,
-        })
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_RESPONSE_SIZE, read_body};
+    use super::{MAX_RESPONSE_SIZE, ip_is_allowed, read_body};
+    use std::net::IpAddr;
+    use std::str::FromStr;
+
+    #[test]
+    fn blocks_everything_that_is_not_public() {
+        for blocked in [
+            "127.0.0.1",
+            "10.1.2.3",
+            "192.168.1.1",
+            "172.16.0.1",
+            "169.254.169.254", // cloud metadata
+            "100.64.0.1",      // CGNAT
+            "192.0.0.1",
+            "198.18.0.1",
+            "224.0.0.1",
+            "0.0.0.0",
+            "::1",
+            "::",
+            "fd00::1",
+            "fe80::1",
+            "ff02::1",
+            "::ffff:127.0.0.1",
+        ] {
+            assert!(
+                !ip_is_allowed(&IpAddr::from_str(blocked).unwrap()),
+                "{blocked} should be blocked"
+            );
+        }
+
+        for allowed in ["1.1.1.1", "93.184.216.34", "2606:4700:4700::1111"] {
+            assert!(
+                ip_is_allowed(&IpAddr::from_str(allowed).unwrap()),
+                "{allowed} should be allowed"
+            );
+        }
+    }
 
     fn response(body: Vec<u8>) -> reqwest::Response {
         reqwest::Response::from(axum::http::Response::new(body))

@@ -84,8 +84,8 @@ impl<C: Consumer> ConsumerDelegate for Delegate<C> {
 
                             // Undecodable payload will never succeed; one retry for
                             // anything else, then let the dead-letter exchange keep it.
-                            let requeue = !redelivered
-                                && e.downcast_ref::<serde_json::Error>().is_none();
+                            let requeue =
+                                !redelivered && e.downcast_ref::<serde_json::Error>().is_none();
 
                             acker
                                 .nack(BasicNackOptions {

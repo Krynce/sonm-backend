@@ -30,8 +30,19 @@ impl EncryptionKey {
 
 impl EncryptionRepository for EncryptionKey {
     fn decrypt_buffer(&self, mut buf: Vec<u8>, iv: &str) -> anyhow::Result<Vec<u8>> {
-        let iv = &BASE64_STANDARD.decode(iv).unwrap()[..];
-        let iv: &Nonce<typenum::consts::U12> = iv.into();
+        // A corrupt IV in the database must not take the process down.
+        let iv = BASE64_STANDARD
+            .decode(iv)
+            .map_err(|error| anyhow::anyhow!("EncryptionRepository: invalid IV: {error}"))?;
+
+        if iv.len() != 12 {
+            return Err(anyhow::anyhow!(
+                "EncryptionRepository: IV must be 12 bytes, got {}",
+                iv.len()
+            ));
+        }
+
+        let iv = Nonce::<typenum::consts::U12>::from_slice(&iv);
 
         self.create_cipher()
             .decrypt_in_place(iv, b"", &mut buf)
@@ -71,5 +82,15 @@ mod tests {
         let plaintext = encryption.decrypt_buffer(ciphertext, &iv).unwrap();
         assert_eq!(plaintext.len(), 1);
         assert_eq!(plaintext[0], 67);
+    }
+
+    #[test]
+    fn broken_iv_errors_instead_of_panicking() {
+        let encryption =
+            EncryptionKey::new("XkbJ8gBzrouQ+15Ri23xCC81+aZE26Z6+gXzglFxOD4=".to_string());
+
+        for iv in ["not base64!", "", &BASE64_STANDARD.encode([1, 2, 3])] {
+            assert!(encryption.decrypt_buffer(vec![67; 17], iv).is_err());
+        }
     }
 }
