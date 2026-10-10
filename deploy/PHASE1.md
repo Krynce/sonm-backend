@@ -1,5 +1,13 @@
 # Деплой фазы 1 (panic-поверхность и безопасность)
 
+> **Статус: выполнено 2026-10-10** на `/opt/sonm`, тег `v0.1.3`. Пункты 1, 1a и 2 пройдены,
+> креды MinIO и RabbitMQ ротированы — значения `minioautumn`/`rabbitpass` ниже оставлены
+> как история, они больше не действуют. Документ нужен при переносе стека на новый хост.
+>
+> **Грабли:** `docker compose exec -T` читает stdin, поэтому внутри `ssh host 'bash -s' <<EOF`
+> он съедает остаток скрипта. Каждому `exec` нужен `</dev/null`, иначе половина шагов
+> молча не выполнится (у меня так пароль сменился в брокере, но не в `.env`).
+
 Шаги, которые нельзя сделать из кода: выполняются на VPS руками при раскатке фазы 1
 из [BACKEND_OPTIMIZATION_PLAN.md](../../BACKEND_OPTIMIZATION_PLAN.md).
 Пункт 1 — **до** `docker compose up`, иначе compose откажется стартовать
@@ -67,7 +75,7 @@ RabbitMQ (пользователь живёт в его базе, `RABBITMQ_DEFA
 первом запуске — менять надо через `rabbitmqctl`):
 
 ```sh
-docker compose exec -T rabbit rabbitmqctl change_password rabbituser "$NEW_RABBIT_PASS"
+docker compose exec -T rabbit rabbitmqctl change_password rabbituser "$NEW_RABBIT_PASS" </dev/null
 sed -i "s/^RABBIT_PASS=.*/RABBIT_PASS=$NEW_RABBIT_PASS/" .env
 sed -i "s/^SONM__RABBIT__PASSWORD=.*/SONM__RABBIT__PASSWORD=$NEW_RABBIT_PASS/" secrets.env
 docker compose up -d api gateway push scheduler voice
