@@ -1,6 +1,6 @@
 use livekit_api::{access_token::TokenVerifier, webhooks::WebhookReceiver};
 use livekit_protocol::TrackType;
-use rocket::{State, post};
+use rocket::{State, get, post};
 use rocket_empty::EmptyResponse;
 use sonm_database::{
     AMQP, Channel, Database, PartialMessage, SystemMessage,
@@ -363,4 +363,10 @@ pub async fn ingress(
     };
 
     Ok(EmptyResponse)
+}
+
+/// Liveness probe for the container healthcheck
+#[get("/health")]
+pub fn health() -> &'static str {
+    "ok"
 }

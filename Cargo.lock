@@ -8624,7 +8624,6 @@ dependencies = [
  "infer",
  "jxl-oxide",
  "kamadak-exif",
- "lazy_static",
  "lcms2",
  "moka",
  "nanoid",

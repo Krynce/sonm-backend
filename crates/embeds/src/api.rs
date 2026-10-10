@@ -12,6 +12,8 @@ pub static CACHE_CONTROL: &str = "public, max-age=600, immutable";
 pub async fn router() -> Router {
     Router::new()
         .route("/", get(root))
+        // Liveness probe for the container healthcheck
+        .route("/health", get(|| async { "ok" }))
         .route("/proxy", get(proxy))
         .route("/embed", get(embed))
 }

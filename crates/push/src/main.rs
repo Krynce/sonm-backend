@@ -5,11 +5,14 @@ use std::sync::Arc;
 
 use lapin::{
     Channel, Connection, ConnectionProperties,
-    options::{BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions},
-    types::FieldTable,
+    options::{
+        BasicConsumeOptions, BasicQosOptions, ExchangeDeclareOptions, QueueBindOptions,
+        QueueDeclareOptions,
+    },
+    types::{AMQPValue, FieldTable},
 };
 use sonm_config::{Settings, config};
-use sonm_database::Database;
+use sonm_database::{AMQP, Database};
 use tokio::signal::ctrl_c;
 
 mod consumers;
@@ -48,6 +51,9 @@ async fn main() {
         .await
         .expect("Failed to connect to RabbitMQ"),
     );
+
+    // Consumers go silent without a word if the broker restarts; exit so Docker rebuilds them.
+    AMQP::watch_connection(connection.clone());
 
     let mut channels = Vec::new();
 
@@ -194,10 +200,55 @@ where
         ..Default::default()
     };
 
+    // Failed deliveries are parked on a single dead-letter queue instead of being dropped.
+    let dlx = format!("{}-dlx", config.push.exchange);
+    let dlq = format!("{}-dlq", config.push.exchange);
+
     channel
-        .queue_declare(queue_name.into(), args, queue_args.unwrap_or_default())
+        .exchange_declare(
+            dlx.as_str().into(),
+            lapin::ExchangeKind::Fanout,
+            ExchangeDeclareOptions {
+                durable: true,
+                ..Default::default()
+            },
+            FieldTable::default(),
+        )
+        .await
+        .expect("Failed to declare dead-letter exchange");
+
+    channel
+        .queue_declare(dlq.as_str().into(), args, FieldTable::default())
+        .await
+        .expect("Failed to declare dead-letter queue");
+
+    channel
+        .queue_bind(
+            dlq.as_str().into(),
+            dlx.as_str().into(),
+            "".into(),
+            QueueBindOptions::default(),
+            FieldTable::default(),
+        )
+        .await
+        .expect("Failed to bind dead-letter queue");
+
+    let mut declare_args = queue_args.unwrap_or_default();
+    declare_args.insert(
+        "x-dead-letter-exchange".into(),
+        AMQPValue::LongString(dlx.as_str().into()),
+    );
+
+    channel
+        .queue_declare(queue_name.into(), args, declare_args)
         .await
         .unwrap();
+
+    // Cap unacknowledged deliveries so they cannot pile up in memory.
+    channel
+        .basic_qos(20, BasicQosOptions::default())
+        .await
+        .expect("Failed to set prefetch");
 
     channel
         .queue_bind(
@@ -215,7 +266,7 @@ where
             queue_name.into(),
             "".into(),
             BasicConsumeOptions {
-                no_ack: true,
+                no_ack: false,
                 ..Default::default()
             },
             FieldTable::default(),

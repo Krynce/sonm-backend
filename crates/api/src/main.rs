@@ -20,6 +20,12 @@ use std::str::FromStr;
 use rocket::data::ToByteUnit;
 use sonm_database::voice::VoiceClient;
 
+/// Liveness probe for the container healthcheck
+#[get("/health")]
+fn health() -> &'static str {
+    "ok"
+}
+
 pub async fn web() -> Rocket<Build> {
     // Get settings
     let config = config().await;
@@ -82,6 +88,7 @@ pub async fn web() -> Rocket<Build> {
     routes::mount(config, rocket)
         .attach(prometheus.clone())
         .mount("/metrics", prometheus)
+        .mount("/", routes![health])
         .mount("/", rocket_cors::catch_all_options_routes())
         .mount("/", ratelimiter::routes())
         .mount("/swagger/", swagger)

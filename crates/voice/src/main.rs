@@ -22,7 +22,7 @@ async fn main() -> Result<(), rocket::Error> {
         .manage(database)
         .manage(voice_client)
         .manage(amqp)
-        .mount("/", routes![api::ingress])
+        .mount("/", routes![api::ingress, api::health])
         .configure(Config {
             port: 8500,
             address: Ipv4Addr::new(0, 0, 0, 0).into(),

@@ -4,20 +4,43 @@ name: sonm
 # Data lives in ${DATA_DIR} — the old Stoat self-hosted ./data, reused in place.
 # Never run this alongside the old stack: both would open the same Mongo files.
 
+# Docker keeps container logs forever by default; database alone was 329 MB of the 333 MB total.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 x-backend: &backend
   env_file: secrets.env
   restart: always
+  logging: *logging
   volumes:
     - ./Sonm.toml:/Sonm.toml:ro
 
 x-public: &public
   networks: [default, proxy_net]
 
+# The service images are distroless, so the probe runs through the busybox copied into them.
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 30s
+
 services:
   database:
     # ponytail: mongo 8.x не стартует на ядре Ubuntu 7.0.0-N (SERVER-121912); вернуть latest, когда ядро будет >= 7.0.14 или 7.1
     image: docker.io/mongo:7.0
+    # WiredTiger would otherwise size its cache at ~1.45 GB of this 3.9 GB host.
+    # --bind_ip_all is what the image's entrypoint adds by default; spelled out because
+    # overriding the command is what would otherwise drop it.
+    command: mongod --bind_ip_all --wiredTigerCacheSizeGB 0.35
     restart: always
+    # mem_limit is a fuse, not a reservation: the sum may exceed RAM, what matters is that
+    # the cgroup kills one container before the kernel kills the host (there is no swap).
+    mem_limit: 640m
+    logging: *logging
     volumes:
       - ${DATA_DIR:?}/db:/data/db
     healthcheck:
@@ -29,14 +52,22 @@ services:
 
   redis:
     image: valkey/valkey:9-alpine
+    command: valkey-server --maxmemory 96mb --maxmemory-policy allkeys-lru
     restart: always
+    mem_limit: 128m
+    logging: *logging
 
   rabbit:
     image: docker.io/rabbitmq:4
     restart: always
+    mem_limit: 384m
+    logging: *logging
     environment:
       RABBITMQ_DEFAULT_USER: rabbituser
       RABBITMQ_DEFAULT_PASS: rabbitpass
+    configs:
+      - source: rabbit_conf
+        target: /etc/rabbitmq/conf.d/10-sonm.conf
     volumes:
       - ${DATA_DIR:?}/rabbit:/var/lib/rabbitmq
     healthcheck:
@@ -52,6 +83,8 @@ services:
     pull_policy: missing
     command: server /data
     restart: always
+    mem_limit: 256m
+    logging: *logging
     volumes:
       - ${DATA_DIR:?}/minio:/data
     environment:
@@ -66,6 +99,7 @@ services:
   scheduler:
     <<: *backend
     image: ghcr.io/krynce/sonm-backend/scheduler:${BACKEND_TAG:?}
+    mem_limit: 96m
     depends_on:
       database: { condition: service_healthy }
       rabbit: { condition: service_healthy }
@@ -74,6 +108,10 @@ services:
   api:
     <<: [*backend, *public]
     image: ghcr.io/krynce/sonm-backend/api:${BACKEND_TAG:?}
+    mem_limit: 320m
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "/bin/busybox", "wget", "-qO-", "http://127.0.0.1:14702/health"]
     depends_on:
       database: { condition: service_healthy }
       redis: { condition: service_started }
@@ -87,12 +125,19 @@ services:
       - traefik.http.routers.sonm-api.tls.certresolver=myresolver
       - traefik.http.routers.sonm-api.middlewares=sonm-strip
       - traefik.http.services.sonm-api.loadbalancer.server.port=14702
+      - traefik.http.services.sonm-api.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.sonm-api.loadbalancer.healthcheck.interval=15s
       # Shared by every router below: drops the service prefix before proxying.
       - traefik.http.middlewares.sonm-strip.stripprefix.prefixes=/api,/ws,/files,/autumn,/embeds,/january,/livekit
 
   gateway:
     <<: [*backend, *public]
     image: ghcr.io/krynce/sonm-backend/gateway:${BACKEND_TAG:?}
+    mem_limit: 256m
+    healthcheck:
+      <<: *healthcheck
+      # 14703 speaks WebSocket; the health endpoint has its own port.
+      test: ["CMD", "/bin/busybox", "wget", "-qO-", "http://127.0.0.1:14713/"]
     depends_on:
       database: { condition: service_healthy }
       redis: { condition: service_started }
@@ -109,6 +154,11 @@ services:
   files:
     <<: [*backend, *public]
     image: ghcr.io/krynce/sonm-backend/files:${BACKEND_TAG:?}
+    # Tight against a 192 MiB S3 cache plus image decoding; see 2.4/2.5 in the optimization plan.
+    mem_limit: 384m
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "/bin/busybox", "wget", "-qO-", "http://127.0.0.1:14704/health"]
     depends_on:
       database: { condition: service_healthy }
       minio: { condition: service_started }
@@ -121,10 +171,16 @@ services:
       - traefik.http.routers.sonm-files.tls.certresolver=myresolver
       - traefik.http.routers.sonm-files.middlewares=sonm-strip
       - traefik.http.services.sonm-files.loadbalancer.server.port=14704
+      - traefik.http.services.sonm-files.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.sonm-files.loadbalancer.healthcheck.interval=15s
 
   embeds:
     <<: [*backend, *public]
     image: ghcr.io/krynce/sonm-backend/embeds:${BACKEND_TAG:?}
+    mem_limit: 160m
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "/bin/busybox", "wget", "-qO-", "http://127.0.0.1:14705/health"]
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy_net
@@ -132,12 +188,19 @@ services:
       - traefik.http.routers.sonm-embeds.rule=Host(`${DOMAIN:?}`) && (PathPrefix(`/embeds`) || PathPrefix(`/january`))
       - traefik.http.routers.sonm-embeds.entrypoints=websecure
       - traefik.http.routers.sonm-embeds.tls.certresolver=myresolver
-      - traefik.http.routers.sonm-embeds.middlewares=sonm-strip
+      # embeds has no database, so it cannot use the in-process ratelimiter the other
+      # services share; the edge proxy limits it per source IP instead.
+      - traefik.http.middlewares.sonm-embeds-rl.ratelimit.average=20
+      - traefik.http.middlewares.sonm-embeds-rl.ratelimit.burst=50
+      - traefik.http.routers.sonm-embeds.middlewares=sonm-strip,sonm-embeds-rl
       - traefik.http.services.sonm-embeds.loadbalancer.server.port=14705
+      - traefik.http.services.sonm-embeds.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.sonm-embeds.loadbalancer.healthcheck.interval=15s
 
   push:
     <<: *backend
     image: ghcr.io/krynce/sonm-backend/push:${BACKEND_TAG:?}
+    mem_limit: 96m
     depends_on:
       database: { condition: service_healthy }
       redis: { condition: service_started }
@@ -146,6 +209,10 @@ services:
   voice:
     <<: *backend
     image: ghcr.io/krynce/sonm-backend/voice:${BACKEND_TAG:?}
+    mem_limit: 64m
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "/bin/busybox", "wget", "-qO-", "http://127.0.0.1:8500/health"]
     depends_on:
       database: { condition: service_healthy }
       rabbit: { condition: service_healthy }
@@ -155,6 +222,8 @@ services:
     image: ghcr.io/stoatchat/livekit-server:v1.9.14
     command: --config /etc/livekit.yml
     restart: always
+    mem_limit: 256m
+    logging: *logging
     depends_on: [redis]
     ports:
       - "7881:7881"
@@ -174,6 +243,8 @@ services:
     <<: *public
     image: ghcr.io/krynce/sonm-web:${WEB_TAG:?}
     restart: always
+    mem_limit: 64m
+    logging: *logging
     environment:
       VITE_API_URL: https://${DOMAIN:?}/api
     labels:
@@ -188,6 +259,8 @@ services:
   desktop:
     image: nginx:alpine
     restart: always
+    mem_limit: 32m
+    logging: *logging
     networks: [proxy_net]
     volumes:
       - ./Sonm.exe:/srv/Sonm.exe:ro
@@ -204,6 +277,11 @@ services:
       - traefik.http.services.sonm-desktop.loadbalancer.server.port=80
 
 configs:
+  rabbit_conf:
+    content: |
+      # Default is 60% of host RAM, which on this host is more than the whole stack has.
+      vm_memory_high_watermark.absolute = 256MiB
+
   desktop_nginx:
     content: |
       server {

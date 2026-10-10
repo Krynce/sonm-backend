@@ -1,10 +1,5 @@
 use futures_lite::stream::StreamExt;
-use lapin::{
-    ConnectionBuilder, ConnectionProperties, ExchangeKind,
-    options::*,
-    types::FieldTable,
-    uri::{AMQPAuthority, AMQPQueryString, AMQPUri, AMQPUserInfo},
-};
+use lapin::{ExchangeKind, options::*, types::FieldTable};
 use log::{debug, info};
 use redis_kiss::{AsyncCommands, Conn as RedisConnection, get_connection};
 use serde_json;
@@ -12,36 +7,15 @@ use sonm_config::config;
 use sonm_database::{AMQP, Database, events::rabbit::AckEventPayload};
 use sonm_result::{Result, ToSonmError};
 
-pub async fn task(db: Database, _amqp: AMQP) -> Result<()> {
+pub async fn task(db: Database, amqp: AMQP) -> Result<()> {
     let config = config().await;
 
     let mut redis = get_connection()
         .await
         .expect("Failed to get redis connection");
 
-    let uri = AMQPUri {
-        scheme: lapin::uri::AMQPScheme::AMQP,
-        authority: AMQPAuthority {
-            userinfo: AMQPUserInfo {
-                username: config.rabbit.username,
-                password: config.rabbit.password,
-            },
-            host: config.rabbit.host,
-            port: config.rabbit.port,
-        },
-        vhost: "/".to_string(),
-        query: AMQPQueryString::default(),
-    };
-
-    let connection = ConnectionBuilder::new()
-        .expect("Builder")
-        .with_uri(uri)
-        .with_properties(ConnectionProperties::default())
-        .connect()
-        .await
-        .expect("Failed to connect to rabbitmq");
-
-    let reader_channel = connection
+    let reader_channel = amqp
+        .connection()
         .create_channel()
         .await
         .expect("Failed to create channel");

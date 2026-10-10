@@ -23,7 +23,7 @@ serde_json = { workspace = true }
 
 # Async runtime
 async-recursion = { workspace = true }
-tokio = { workspace = true, features = [] }
+tokio = { workspace = true, features = ["sync"] }
 
 # Web requests
 reqwest = { workspace = true, features = ["json"] }
@@ -47,3 +47,6 @@ axum-extra = { workspace = true, features = ["typed-header"] }
 # OpenAPI & documentation generation
 utoipa-scalar = { workspace = true, features = ["axum"] }
 utoipa = { workspace = true, features = ["axum_extras", "ulid"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

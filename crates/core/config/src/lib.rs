@@ -309,6 +309,7 @@ impl Push {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Embeds {
     pub blocked_domains: Vec<String>,
+    pub proxy_cache_size: u64,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -333,6 +334,7 @@ pub struct FilesS3 {
 pub struct Files {
     pub encryption_key: String,
     pub webp_quality: f32,
+    pub cache_size: u64,
     pub blocked_mime_types: Vec<String>,
     pub clamd_host: String,
     pub scan_mime_types: Vec<String>,

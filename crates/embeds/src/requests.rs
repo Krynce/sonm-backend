@@ -48,21 +48,6 @@ lazy_static! {
     /// Url for YouTube oembed
     pub static ref OEMBED_URL: Url = Url::parse("https://www.youtube.com/oembed").unwrap();
 
-    /// Cache for proxy results
-    static ref PROXY_CACHE: moka::future::Cache<String, Result<(String, Vec<u8>)>> = moka::future::Cache::builder()
-        .weigher(|_key, value: &Result<(String, Vec<u8>)>| -> u32 {
-            std::mem::size_of::<Result<(String, Vec<u8>)>>() as u32 + if let Ok((url, vec)) = value {
-                url.len().try_into().unwrap_or(u32::MAX) +
-                vec.len().try_into().unwrap_or(u32::MAX)
-            } else {
-                std::mem::size_of::<Error>() as u32
-            }
-        })
-        // TODO config
-        .max_capacity(512 * 1024 * 1024) // Cache up to 512MiB in memory
-        .time_to_live(Duration::from_secs(60)) // For up to 1 minute
-        .build();
-
     /// Cache for embed results
     static ref EMBED_CACHE: moka::future::Cache<String, Embed> = moka::future::Cache::builder()
         // TODO config
@@ -88,6 +73,65 @@ lazy_static! {
         "fc00::/10"
         ]
     ).unwrap();
+}
+
+/// Maximum size of a response body this service will pull into memory
+///
+/// ponytail: one number for every kind of media; split per mime type if it ever matters.
+const MAX_RESPONSE_SIZE: usize = 20 * 1024 * 1024;
+
+/// Read a response body, refusing anything larger than [`MAX_RESPONSE_SIZE`]
+///
+/// `Content-Length` is only a hint, so the chunks are counted as well.
+async fn read_body(mut response: Response) -> Result<Vec<u8>> {
+    let too_large = || {
+        create_error!(FileTooLarge {
+            max: MAX_RESPONSE_SIZE
+        })
+    };
+
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESPONSE_SIZE as u64)
+    {
+        return Err(too_large());
+    }
+
+    let mut body = Vec::new();
+
+    while let Some(chunk) = report_internal_error!(response.chunk().await)? {
+        if body.len() + chunk.len() > MAX_RESPONSE_SIZE {
+            return Err(too_large());
+        }
+
+        body.extend_from_slice(&chunk);
+    }
+
+    Ok(body)
+}
+
+static PROXY_CACHE: tokio::sync::OnceCell<moka::future::Cache<String, Result<(String, Vec<u8>)>>> =
+    tokio::sync::OnceCell::const_new();
+
+/// Cache for proxy results
+async fn proxy_cache() -> &'static moka::future::Cache<String, Result<(String, Vec<u8>)>> {
+    PROXY_CACHE
+        .get_or_init(|| async {
+            moka::future::Cache::builder()
+                .weigher(|_key, value: &Result<(String, Vec<u8>)>| -> u32 {
+                    std::mem::size_of::<Result<(String, Vec<u8>)>>() as u32
+                        + if let Ok((url, vec)) = value {
+                            url.len().try_into().unwrap_or(u32::MAX)
+                                + vec.len().try_into().unwrap_or(u32::MAX)
+                        } else {
+                            std::mem::size_of::<Error>() as u32
+                        }
+                })
+                .max_capacity(config().await.embeds.proxy_cache_size)
+                .time_to_live(Duration::from_secs(60)) // For up to 1 minute
+                .build()
+        })
+        .await
 }
 
 #[derive(Clone)]
@@ -148,13 +192,15 @@ pub struct Request {
 impl Request {
     /// Proxy a given URL
     pub async fn proxy_file(url: &str) -> Result<(String, Vec<u8>)> {
-        if let Some(hit) = PROXY_CACHE.get(url).await {
+        let cache = proxy_cache().await;
+
+        if let Some(hit) = cache.get(url).await {
             hit
         } else {
             let Request { response, mime } = Request::new_from_str(url).await?;
 
             if matches!(mime.type_(), mime::IMAGE | mime::VIDEO) {
-                let bytes = report_internal_error!(response.bytes().await);
+                let bytes = read_body(response).await;
 
                 let result = match bytes {
                     Ok(bytes) => {
@@ -191,7 +237,7 @@ impl Request {
                     Err(err) => Err(err),
                 };
 
-                PROXY_CACHE.insert(url.to_owned(), result.clone()).await;
+                cache.insert(url.to_owned(), result.clone()).await;
                 result
             } else {
                 Err(create_error!(FileTypeNotAllowed))
@@ -223,7 +269,7 @@ impl Request {
             };
 
             if let Some((width, height)) = image_size_vec(
-                &report_internal_error!(request.response.bytes().await)?,
+                &read_body(request.response).await?,
                 request.mime.as_ref(),
             ) {
                 Ok(Some(Image {
@@ -262,7 +308,7 @@ impl Request {
 
             let mut file = report_internal_error!(tempfile::NamedTempFile::new())?;
             report_internal_error!(
-                file.write_all(&report_internal_error!(response.bytes().await)?)
+                file.write_all(&read_body(response).await?)
             )?;
 
             if let Some((width, height)) = video_size(&file) {
@@ -326,7 +372,7 @@ impl Request {
                     let encoding =
                         Encoding::for_label(encoding_name.as_bytes()).unwrap_or(&UTF_8_INIT);
 
-                    let bytes = report_internal_error!(request.response.bytes().await)?;
+                    let bytes = read_body(request.response).await?;
                     let (text, _, _) = encoding.decode(&bytes);
 
                     crate::website_embed::create_website_embed(&url, &text)
@@ -509,5 +555,31 @@ impl Request {
             ip: resolved_address.unwrap(),
             blocked: false,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MAX_RESPONSE_SIZE, read_body};
+
+    fn response(body: Vec<u8>) -> reqwest::Response {
+        reqwest::Response::from(axum::http::Response::new(body))
+    }
+
+    #[tokio::test]
+    async fn reads_a_small_body() {
+        assert_eq!(
+            read_body(response(b"hello".to_vec())).await.unwrap(),
+            b"hello"
+        );
+    }
+
+    #[tokio::test]
+    async fn refuses_an_oversized_body() {
+        assert!(
+            read_body(response(vec![0; MAX_RESPONSE_SIZE + 1]))
+                .await
+                .is_err()
+        );
     }
 }

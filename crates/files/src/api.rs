@@ -11,7 +11,6 @@ use axum::{
     routing::{get, post},
 };
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use sonm_config::{config, report_internal_error};
@@ -48,6 +47,8 @@ pub async fn router() -> Router<AppState> {
 
     Router::new()
         .route("/", get(root))
+        // Liveness probe for the container healthcheck
+        .route("/health", get(|| async { "ok" }))
         .route(
             "/:tag",
             post(upload_file)
@@ -62,32 +63,40 @@ pub async fn router() -> Router<AppState> {
         .layer(cors)
 }
 
-lazy_static! {
-    /// Short-lived file cache to allow us to populate different CDN regions without increasing bandwidth to S3 provider
-    /// Uploads will also be stored here to prevent immediately queued downloads from doing the entire round-trip
-    static ref S3_CACHE: moka::future::Cache<String, Result<Vec<u8>>> = moka::future::Cache::builder()
-        .weigher(|_key, value: &Result<Vec<u8>>| -> u32 {
-            std::mem::size_of::<Result<Vec<u8>>>() as u32 + if let Ok(vec) = value {
-                vec.len().try_into().unwrap_or(u32::MAX)
-            } else {
-                std::mem::size_of::<Error>() as u32
-            }
+static S3_CACHE: tokio::sync::OnceCell<moka::future::Cache<String, Result<Vec<u8>>>> =
+    tokio::sync::OnceCell::const_new();
+
+/// Short-lived file cache to allow us to populate different CDN regions without increasing bandwidth to S3 provider
+///
+/// Uploads will also be stored here to prevent immediately queued downloads from doing the entire round-trip
+async fn s3_cache() -> &'static moka::future::Cache<String, Result<Vec<u8>>> {
+    S3_CACHE
+        .get_or_init(|| async {
+            moka::future::Cache::builder()
+                .weigher(|_key, value: &Result<Vec<u8>>| -> u32 {
+                    std::mem::size_of::<Result<Vec<u8>>>() as u32
+                        + if let Ok(vec) = value {
+                            vec.len().try_into().unwrap_or(u32::MAX)
+                        } else {
+                            std::mem::size_of::<Error>() as u32
+                        }
+                })
+                .max_capacity(config().await.files.cache_size)
+                .time_to_live(Duration::from_secs(5 * 60)) // For up to 5 minutes
+                .build()
         })
-        // TODO config
-        // .max_capacity(1024 * 1024 * 1024) // Cache up to 1GiB in memory
-        // .max_capacity(512 * 1024 * 1024) // Cache up to 512MiB in memory
-        .max_capacity(2 * 1024 * 1024 * 1024) // Cache up to 2GiB in memory
-        .time_to_live(Duration::from_secs(5 * 60)) // For up to 5 minutes
-        .build();
+        .await
 }
 
 /// Retrieve hash information and file data by given hash
 async fn retrieve_file_by_hash(hash: &FileHash) -> Result<Vec<u8>> {
-    if let Some(data) = S3_CACHE.get(&hash.id).await {
+    let cache = s3_cache().await;
+
+    if let Some(data) = cache.get(&hash.id).await {
         data
     } else {
         let data = fetch_from_s3(&hash.bucket_id, &hash.path, &hash.iv).await;
-        S3_CACHE.insert(hash.id.to_owned(), data.clone()).await;
+        cache.insert(hash.id.to_owned(), data.clone()).await;
         data
     }
 }

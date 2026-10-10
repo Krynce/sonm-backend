@@ -39,6 +39,7 @@ pub async fn delete_from_s3(bucket_id: &str, path: &str) -> Result<()> {
 pub fn image_size(f: &NamedTempFile) -> Option<(usize, usize)> {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {
@@ -67,6 +68,7 @@ pub fn image_size(f: &NamedTempFile) -> Option<(usize, usize)> {
 pub fn image_size_vec(v: &[u8], mime: &str) -> Option<(usize, usize)> {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {
@@ -95,6 +97,7 @@ pub fn image_size_vec(v: &[u8], mime: &str) -> Option<(usize, usize)> {
 pub fn is_animated(f: &NamedTempFile, mime: &str) -> Option<bool> {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {
@@ -123,6 +126,7 @@ pub fn is_animated(f: &NamedTempFile, mime: &str) -> Option<bool> {
 pub fn video_size(f: &NamedTempFile) -> Option<(i64, i64)> {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {
@@ -151,6 +155,7 @@ pub fn video_size(f: &NamedTempFile) -> Option<(i64, i64)> {
 pub fn decode_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> Result<DynamicImage> {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {
@@ -179,6 +184,7 @@ pub fn decode_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> Res
 pub fn is_valid_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> bool {
     let media = MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
+        cache_size: Default::default(),
         clamd_host: Default::default(),
         encryption_key: Default::default(),
         limit: FilesLimit {

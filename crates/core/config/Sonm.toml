@@ -127,6 +127,8 @@ private_key = "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUJSUWpyTWxLR
 public_key = "BGcvgR-i2z4IQ5Mw841vJvkLjt8wY-FjmWrw83jOLCY52qcGZS0OF7nfLzuYbjsQISwVO2HXrmf18gLWVX3Kwfw="
 [embeds]
 blocked_domains = []
+# In-memory cache for proxied media (in bytes)
+proxy_cache_size = 50_331_648 # 48 MiB
 
 [files]
 # Encryption key for stored files
@@ -134,6 +136,8 @@ blocked_domains = []
 encryption_key = "qcuMA+ssxhMyKaNAKBGFfryfFtUH8NDlamQyDwGW6fU="
 # Quality used for lossy WebP previews (set to 100 for lossless)
 webp_quality = 80.0
+# In-memory cache for files fetched from S3 (in bytes)
+cache_size = 201_326_592 # 192 MiB
 # Mime types that cannot be uploaded or served
 #
 # Example for Windows executables and Android installation files:
@@ -324,10 +328,13 @@ guidelines = ""
 
 [sentry]
 # Configuration for Sentry error reporting
-api = ""
-gateway = ""
-voice = ""
-files = ""
-embeds = ""
-push = ""
-scheduler = ""
+#
+# All services report into one project. Set a DSN to "" (or SONM__SENTRY__<SERVICE>="")
+# to keep a local run from sending events.
+api = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+gateway = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+voice = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+files = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+embeds = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+push = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"
+scheduler = "https://6e338ed69b98022333579a55d8eb5b4b@o324491.ingest.us.sentry.io/4512232593620992"

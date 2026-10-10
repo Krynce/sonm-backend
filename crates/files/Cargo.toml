@@ -31,7 +31,6 @@ ffprobe = { workspace = true }
 imagesize = { workspace = true }
 
 # Utility
-lazy_static = { workspace = true }
 moka = { workspace = true, features = ["future"] }
 url-escape = { workspace = true }
 # Serialisation

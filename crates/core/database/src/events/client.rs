@@ -415,7 +415,10 @@ impl EventV1 {
 
         let redis_channel = self.redis_suffix(channel.clone());
 
-        redis_kiss::publish(redis_channel, &self).await.unwrap();
+        if let Err(e) = redis_kiss::publish(redis_channel, &self).await {
+            log::error!("Failed to publish event to Redis: {e:?}");
+            sonm_config::capture_internal_error!(&e);
+        }
 
         if let Err(e) = get_amqp().publish_event(channel, &self).await {
             if cfg!(debug_assertions) {
@@ -432,7 +435,10 @@ impl EventV1 {
 
         for channel in &channels {
             let redis_channel = self.redis_suffix(channel.clone());
-            redis_kiss::publish(redis_channel, &self).await.unwrap();
+            if let Err(e) = redis_kiss::publish(redis_channel, &self).await {
+                log::error!("Failed to publish event to Redis: {e:?}");
+                sonm_config::capture_internal_error!(&e);
+            }
         }
 
         if let Err(e) = get_amqp().publish_event_broadcast(channels, &self).await {

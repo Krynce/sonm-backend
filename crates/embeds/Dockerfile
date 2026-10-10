@@ -15,6 +15,8 @@ COPY --from=debian /runtime-libs/ /
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffprobe /usr/local/bin/
 COPY --from=debian /usr/bin/uname /usr/bin/uname
+# Static shell+wget for the container healthcheck; distroless has neither.
+COPY --from=busybox:1.37.0-uclibc /bin/busybox /bin/busybox
 
 EXPOSE 14705
 USER nonroot

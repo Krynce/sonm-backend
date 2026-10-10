@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use lapin::{
     BasicProperties, Channel, Connection, ConsumerDelegate, Error as AMQPError,
     message::{Delivery, DeliveryResult},
-    options::BasicPublishOptions,
+    options::{BasicAckOptions, BasicNackOptions, BasicPublishOptions},
 };
 use log::debug;
 use sonm_database::Database;
@@ -73,10 +73,32 @@ impl<C: Consumer> ConsumerDelegate for Delegate<C> {
                 let consumer = self.0.clone();
 
                 Box::pin(async move {
-                    if let Err(e) = consumer.consume(delivery).await {
-                        sonm_config::capture_anyhow(&e);
-                        log::error!("{e:?}");
+                    let acker = delivery.acker.clone();
+                    let redelivered = delivery.redelivered;
+
+                    let result = match consumer.consume(delivery).await {
+                        Ok(()) => acker.ack(BasicAckOptions::default()).await,
+                        Err(e) => {
+                            sonm_config::capture_anyhow(&e);
+                            log::error!("{e:?}");
+
+                            // Undecodable payload will never succeed; one retry for
+                            // anything else, then let the dead-letter exchange keep it.
+                            let requeue = !redelivered
+                                && e.downcast_ref::<serde_json::Error>().is_none();
+
+                            acker
+                                .nack(BasicNackOptions {
+                                    requeue,
+                                    ..Default::default()
+                                })
+                                .await
+                        }
                     };
+
+                    if let Err(e) = result {
+                        log::error!("Failed to acknowledge delivery: {e:?}");
+                    }
                 })
             }
             Ok(None) => Box::pin(ready(())),

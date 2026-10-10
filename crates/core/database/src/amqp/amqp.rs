@@ -67,6 +67,8 @@ impl AMQP {
             .await
             .expect("Failed to declare exchange");
 
+        Self::watch_connection(this.connection.clone());
+
         let _ = AMQP_INSTANCE.set(this.clone());
 
         this
@@ -91,6 +93,27 @@ impl AMQP {
         );
 
         Self::new(connection).await
+    }
+
+    /// Take the process down once the broker connection is gone.
+    ///
+    /// lapin does not reconnect, and the channels here sit behind a `OnceLock`, so a dropped
+    /// connection means every publish fails for the rest of the process' life while it keeps
+    /// looking healthy. Exiting hands the job to the container restart policy.
+    ///
+    /// ponytail: no in-process reconnect; add one (all eight channels behind a swappable
+    /// handle) if restarting the whole service ever becomes too disruptive.
+    pub fn watch_connection(connection: Arc<Connection>) {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                if !connection.status().connected() {
+                    log::error!("Lost connection to RabbitMQ, exiting to be restarted");
+                    std::process::exit(1);
+                }
+            }
+        });
     }
 
     async fn create_channel(connection: &Connection) -> Arc<Channel> {
