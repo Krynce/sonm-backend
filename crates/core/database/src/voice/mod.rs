@@ -631,8 +631,11 @@ pub async fn delete_voice_channel(
     channel: &UserVoiceChannel,
 ) -> Result<()> {
     if let Some(users) = get_voice_channel_members(channel).await? {
-        let node = get_channel_node(&channel.id).await?.unwrap();
-        voice_client.delete_room(&node, &channel.id).await?;
+        // No node mapping means there is no room left to delete — but the stale voice
+        // state still has to go, same as in `remove_user_from_voice_channel` above.
+        if let Some(node) = get_channel_node(&channel.id).await? {
+            voice_client.delete_room(&node, &channel.id).await?;
+        }
 
         delete_channel_voice_state(channel, &users).await?;
     };

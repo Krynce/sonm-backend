@@ -20,12 +20,19 @@ struct EasyPwnedResult {
 }
 
 /// Hash a password using argon2
-pub fn hash_password(plaintext_password: String) -> Result<String> {
-    argon2::hash_encoded(
-        plaintext_password.as_bytes(),
-        nanoid::nanoid!(24).as_bytes(),
-        &ARGON_CONFIG,
-    )
+///
+/// argon2 is deliberately expensive — tens of ms of CPU — so it never runs on a tokio
+/// worker thread.
+pub async fn hash_password(plaintext_password: String) -> Result<String> {
+    tokio::task::spawn_blocking(move || {
+        argon2::hash_encoded(
+            plaintext_password.as_bytes(),
+            nanoid::nanoid!(24).as_bytes(),
+            &ARGON_CONFIG,
+        )
+    })
+    .await
+    .to_internal_error()?
     .to_internal_error()
 }
 

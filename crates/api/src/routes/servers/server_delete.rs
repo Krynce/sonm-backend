@@ -1,3 +1,4 @@
+use futures::{future::try_join_all, try_join};
 use rocket::State;
 use sonm_database::{
     Database, RemovalIntention, User,
@@ -24,20 +25,19 @@ pub async fn delete(
     target: Reference<'_>,
     options: v0::OptionsServerDelete,
 ) -> Result<EmptyResponse> {
-    let server = target.as_server(db).await?;
-    let member = db.fetch_member(target.id, &user.id).await?;
+    let (server, member) = try_join!(target.as_server(db), db.fetch_member(target.id, &user.id))?;
 
     if server.owner == user.id {
-        for channel_id in &server.channels {
-            delete_voice_channel(
-                voice_client,
-                &UserVoiceChannel {
-                    id: channel_id.clone(),
-                    server_id: Some(server.id.clone()),
-                },
-            )
-            .await?;
-        }
+        // One LiveKit round-trip per channel, all in flight at once.
+        try_join_all(server.channels.iter().map(|channel_id| {
+            let voice_channel = UserVoiceChannel {
+                id: channel_id.clone(),
+                server_id: Some(server.id.clone()),
+            };
+
+            async move { delete_voice_channel(voice_client, &voice_channel).await }
+        }))
+        .await?;
 
         server.delete(db).await
     } else {

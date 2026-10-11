@@ -1,6 +1,8 @@
+use std::sync::OnceLock;
+
 use aes_gcm::{
     Aes256Gcm, Key, KeyInit, Nonce,
-    aead::{Aead, AeadCore, AeadMutInPlace, OsRng},
+    aead::{Aead, AeadCore, AeadInPlace, OsRng},
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 
@@ -8,6 +10,8 @@ use crate::EncryptionRepository;
 
 pub struct EncryptionKey {
     key: String,
+    /// Built on first use: the base64 decode and AES key schedule are the same every time
+    cipher: OnceLock<Aes256Gcm>,
 }
 
 impl EncryptionKey {
@@ -16,15 +20,20 @@ impl EncryptionKey {
     }
 
     pub fn new(key: String) -> EncryptionKey {
-        EncryptionKey { key }
+        EncryptionKey {
+            key,
+            cipher: OnceLock::new(),
+        }
     }
 
-    fn create_cipher(&self) -> Aes256Gcm {
-        let key = &BASE64_STANDARD
-            .decode(self.key.clone())
-            .expect("valid base64 string")[..];
-        let key: &Key<Aes256Gcm> = key.into();
-        Aes256Gcm::new(key)
+    fn create_cipher(&self) -> &Aes256Gcm {
+        self.cipher.get_or_init(|| {
+            let key = &BASE64_STANDARD
+                .decode(&self.key)
+                .expect("valid base64 string")[..];
+            let key: &Key<Aes256Gcm> = key.into();
+            Aes256Gcm::new(key)
+        })
     }
 }
 

@@ -2,13 +2,13 @@ use rocket::{State, serde::json::Json};
 use sonm_database::{
     AuditLogEntryAction, Database, PartialRole, User,
     util::{permissions::DatabasePermissionQuery, reference::Reference},
-    voice::{VoiceClient, sync_voice_permissions},
+    voice::VoiceClient,
 };
 use sonm_models::v0;
 use sonm_permissions::{ChannelPermission, Override, OverrideField, calculate_server_permissions};
 use sonm_result::{Result, create_error};
 
-use crate::util::audit_log_reason::AuditLogReason;
+use crate::util::{audit_log_reason::AuditLogReason, voice::sync_server_voice_permissions};
 
 /// # Set Role Permission
 ///
@@ -70,11 +70,7 @@ pub async fn set_role_permission(
     .insert(db, server.id.clone(), reason, user.id, None)
     .await;
 
-    for channel_id in &server.channels {
-        let channel = Reference::from_unchecked(channel_id).as_channel(db).await?;
-
-        sync_voice_permissions(db, voice_client, &channel, Some(&server), Some(&role_id)).await?;
-    }
+    sync_server_voice_permissions(db, voice_client, &server, Some(&role_id)).await?;
 
     Ok(Json(server.into(db).await))
 }

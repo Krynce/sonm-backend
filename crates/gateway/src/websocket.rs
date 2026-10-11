@@ -282,31 +282,42 @@ async fn listener(
                     break 'out;
                 }
 
-                let subscribed = state.subscribed.read().await;
-                for id in subscribed.iter() {
-                    if report_internal_error!(subscriber.subscribe(id).await).is_err() {
-                        break 'out;
-                    }
+                let subscribed = state
+                    .subscribed
+                    .read()
+                    .await
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<String>>();
+
+                // One SUBSCRIBE for everything: an account with a hundred servers would
+                // otherwise cost a hundred round-trips per connection.
+                if !subscribed.is_empty()
+                    && report_internal_error!(subscriber.subscribe(subscribed).await).is_err()
+                {
+                    break 'out;
                 }
 
                 #[cfg(debug_assertions)]
                 info!("{addr:?} has reset their subscriptions");
             }
             SubscriptionStateChange::Change { add, remove } => {
-                for id in remove {
+                // Empty argument lists must be skipped: bare UNSUBSCRIBE drops *every*
+                // subscription and bare SUBSCRIBE is a protocol error.
+                if !remove.is_empty() {
                     #[cfg(debug_assertions)]
-                    info!("{addr:?} unsubscribing from {id}");
+                    info!("{addr:?} unsubscribing from {remove:?}");
 
-                    if report_internal_error!(subscriber.unsubscribe(id).await).is_err() {
+                    if report_internal_error!(subscriber.unsubscribe(remove).await).is_err() {
                         break 'out;
                     }
                 }
 
-                for id in add {
+                if !add.is_empty() {
                     #[cfg(debug_assertions)]
-                    info!("{addr:?} subscribing to {id}");
+                    info!("{addr:?} subscribing to {add:?}");
 
-                    if report_internal_error!(subscriber.subscribe(id).await).is_err() {
+                    if report_internal_error!(subscriber.subscribe(add).await).is_err() {
                         break 'out;
                     }
                 }

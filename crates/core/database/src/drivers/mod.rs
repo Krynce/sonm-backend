@@ -57,8 +57,26 @@ impl DatabaseInfo {
                 .await
             }
             DatabaseInfo::MongoDb { uri, database_name } => {
-                let client = ::mongodb::Client::with_uri_str(uri)
+                let mut options = ::mongodb::options::ClientOptions::parse(&uri)
                     .await
+                    .map_err(|_| "Failed to parse db connection string.".to_string())?;
+
+                // The driver defaults to a pool of 10 per host, which concurrent requests
+                // queue behind, and to a 30 s server selection timeout, which turns a dead
+                // MongoDB into 30 s hangs instead of fast errors. Values in the connection
+                // string still win: `parse` has already applied them.
+                options.max_pool_size = options.max_pool_size.or(Some(50));
+                options.min_pool_size = options.min_pool_size.or(Some(5));
+                options.connect_timeout = options
+                    .connect_timeout
+                    .or(Some(std::time::Duration::from_secs(5)));
+                options.server_selection_timeout = options
+                    .server_selection_timeout
+                    .or(Some(std::time::Duration::from_secs(5)));
+                // Wire compression is deliberately left off: MongoDB shares the host with
+                // the services, so it would only trade CPU for bandwidth we are not short of.
+
+                let client = ::mongodb::Client::with_options(options)
                     .map_err(|_| "Failed to init db connection.".to_string())?;
 
                 Ok(Database::MongoDb(MongoDb(client, database_name)))

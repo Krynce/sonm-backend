@@ -7,10 +7,7 @@ use redis_kiss::{AsyncCommands, get_connection};
 use std::collections::HashSet;
 
 mod operations;
-use operations::{
-    __add_to_set_string, __add_to_set_u32, __delete_key, __get_set_members_as_string,
-    __get_set_size, __remove_from_set_string, __remove_from_set_u32,
-};
+use operations::{__delete_key, __get_set_members_as_string};
 
 pub static REGION_ID: Lazy<u16> = Lazy::new(|| {
     std::env::var("REGION_ID")
@@ -26,25 +23,35 @@ pub static FLAG_BITS: u32 = 0b1;
 
 /// Create a new presence session, returns the ID of this session
 pub async fn create_session(user_id: &str, flags: u8) -> (bool, u32) {
-    info!("Creating a presence session for {user_id} with flags {flags}");
+    debug!("Creating a presence session for {user_id} with flags {flags}");
 
     if let Ok(mut conn) = get_connection().await {
-        // Check whether this is the first session
-        let was_empty = __get_set_size(&mut conn, &format!("sessions:{user_id}")).await == 0;
-
         // A session ID is comprised of random data and any flags ORed to the end
         let session_id = {
             let mut rng = rand::thread_rng();
             (rng.r#gen::<u32>() & !FLAG_BITS) | (flags as u32 & FLAG_BITS)
         };
 
-        // Add session to user's sessions and to the region
-        __add_to_set_u32(&mut conn, &format!("sessions:{user_id}"), session_id).await;
-        __add_to_set_string(&mut conn, ONLINE_SET, user_id).await;
-        __add_to_set_string(&mut conn, &REGION_KEY, &format!("{user_id}:{session_id}")).await;
-        info!("Created session for {user_id}, assigned them a session ID of {session_id}.");
+        // One round trip instead of four: the SCARD runs before the SADDs, so its value is
+        // still the pre-insert session count.
+        let sessions_key = format!("sessions:{user_id}");
+        let result: Option<(u32, (), (), ())> = redis_kiss::redis::pipe()
+            .scard(&sessions_key)
+            .sadd(&sessions_key, session_id)
+            .sadd(ONLINE_SET, user_id)
+            .sadd(&*REGION_KEY, format!("{user_id}:{session_id}"))
+            .query_async(&mut *conn)
+            .await
+            .ok();
 
-        (was_empty, session_id)
+        let Some((session_count, ..)) = result else {
+            // Fail through
+            return (false, 0);
+        };
+
+        debug!("Created session for {user_id}, assigned them a session ID of {session_id}.");
+
+        (session_count == 0, session_id)
     } else {
         // Fail through
         (false, 0)
@@ -58,23 +65,33 @@ pub async fn delete_session(user_id: &str, session_id: u32) -> bool {
 
 /// Delete existing presence session (but also choose whether to skip region)
 async fn delete_session_internal(user_id: &str, session_id: u32, skip_region: bool) -> bool {
-    info!("Deleting presence session for {user_id} with id {session_id}");
+    debug!("Deleting presence session for {user_id} with id {session_id}");
 
     if let Ok(mut conn) = get_connection().await {
-        // Remove the session
-        __remove_from_set_u32(&mut conn, &format!("sessions:{user_id}"), session_id).await;
+        // One round trip for the removals plus the remaining count; the SCARD runs after
+        // the SREMs, so it already excludes this session.
+        let sessions_key = format!("sessions:{user_id}");
+        let mut pipe = redis_kiss::redis::pipe();
+        pipe.srem(&sessions_key, session_id);
 
-        // Remove from the region
         if !skip_region {
-            __remove_from_set_string(&mut conn, &REGION_KEY, &format!("{user_id}:{session_id}"))
-                .await;
+            pipe.srem(&*REGION_KEY, format!("{user_id}:{session_id}"));
         }
 
-        // Return whether this was the last session
-        let is_empty = __get_set_size(&mut conn, &format!("sessions:{user_id}")).await == 0;
+        let Ok(counts) = pipe
+            .scard(&sessions_key)
+            .query_async::<_, Vec<redis_kiss::redis::Value>>(&mut *conn)
+            .await
+        else {
+            // Fail through
+            return false;
+        };
+
+        let is_empty = matches!(counts.last(), Some(redis_kiss::redis::Value::Int(0)));
+
         if is_empty {
-            __remove_from_set_string(&mut conn, ONLINE_SET, user_id).await;
-            info!("User ID {} just went offline.", &user_id);
+            let _: Option<()> = conn.srem(ONLINE_SET, user_id).await.ok();
+            debug!("User ID {} just went offline.", &user_id);
         }
 
         is_empty

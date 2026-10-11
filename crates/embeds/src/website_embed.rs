@@ -27,7 +27,9 @@ fn url_to_absolute(page_url: &str, url: String) -> String {
 
 /// Create website metadata from URL and document
 pub async fn create_website_embed(original_url: &str, document: &str) -> Option<WebsiteMetadata> {
-    let (mut meta, mut link) = {
+    // Parsing a whole HTML document is synchronous CPU work on untrusted input of up to
+    // the body limit, so it stays off the tokio worker.
+    let (mut meta, mut link) = tokio::task::block_in_place(|| {
         let document = Html::parse_document(document);
 
         // create selectors
@@ -58,8 +60,8 @@ pub async fn create_website_embed(original_url: &str, document: &str) -> Option<
             }
         }
 
-        (meta, link)
-    };
+        Some((meta, link))
+    })?;
 
     // build metadata
     let mut metadata = WebsiteMetadata {

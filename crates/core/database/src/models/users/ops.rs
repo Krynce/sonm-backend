@@ -18,6 +18,11 @@ pub trait AbstractUsers: Sync + Send {
     /// Fetch multiple users by their ids
     async fn fetch_users<'a>(&self, ids: &'a [String]) -> Result<Vec<User>>;
 
+    /// Fetch users whose username contains the given text
+    ///
+    /// `query` is matched literally (case-insensitively), not as a pattern.
+    async fn fetch_users_by_username(&self, query: &str, limit: i64) -> Result<Vec<User>>;
+
     /// Fetch all discriminators in use for a username
     async fn fetch_discriminators_in_use(&self, username: &str) -> Result<Vec<String>>;
 

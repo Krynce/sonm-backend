@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use futures::try_join;
+
 use sonm_database::{
     AuditLogEntryAction, Database, FieldsMember, File, PartialMember, User,
     events::client::EventV1,
@@ -45,10 +47,12 @@ pub async fn edit(
         })
     })?;
 
-    // Fetch server and member
-    let server = server_id.as_server(db).await?;
-    let target_user = member_id.as_user(db).await?;
-    let mut member = member_id.as_member(db, &server.id).await?;
+    // Fetch server and member — three independent lookups, one round-trip
+    let (server, target_user, mut member) = try_join!(
+        server_id.as_server(db),
+        member_id.as_user(db),
+        member_id.as_member(db, server_id.id)
+    )?;
 
     // Fetch our currrent permissions
     let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
@@ -125,6 +129,21 @@ pub async fn edit(
         }
     }
 
+    // Where the target currently is in voice. This used to be looked up again for each
+    // voice branch below with identical arguments; nothing between here and the move
+    // changes it, so one lookup serves them all. Edits that touch no voice field skip it.
+    let current_voice_channel = if data.voice_channel.is_some()
+        || data.can_publish.is_some()
+        || data.can_receive.is_some()
+        || data.remove.contains(&v0::FieldsMember::VoiceChannel)
+        || data.remove.contains(&v0::FieldsMember::CanPublish)
+        || data.remove.contains(&v0::FieldsMember::CanReceive)
+    {
+        get_user_voice_channel_in_server(&target_user.id, &server.id).await?
+    } else {
+        None
+    };
+
     let new_voice_channel = if let Some(new_channel) = &data.voice_channel {
         // ensure the channel we are moving them to is in the server and is a voice channel
 
@@ -141,10 +160,7 @@ pub async fn edit(
             calculate_channel_permissions(&mut query.clone().channel(&channel)).await;
         channel_permissions.throw_if_lacking_channel_permission(ChannelPermission::Connect)?;
 
-        if get_user_voice_channel_in_server(&target_user.id, &server.id)
-            .await?
-            .is_none()
-        {
+        if current_voice_channel.is_none() {
             Err(create_error!(NotConnected))?
         };
 
@@ -246,9 +262,12 @@ pub async fn edit(
     .await;
 
     if let Some(new_voice_channel) = new_voice_channel {
-        if let Some(channel) = get_user_voice_channel_in_server(&target_user.id, &server.id).await?
-        {
-            let old_node = get_channel_node(&channel).await?.unwrap();
+        if let Some(channel) = current_voice_channel.clone() {
+            // The target is recorded as being in a channel that is on no node; there is
+            // nothing to move them off, so treat it as not being connected.
+            let old_node = get_channel_node(&channel)
+                .await?
+                .ok_or_else(|| create_error!(NotConnected))?;
 
             let new_node = match get_channel_node(new_voice_channel.id()).await? {
                 Some(node) => node,
@@ -299,9 +318,11 @@ pub async fn edit(
         || can_receive.is_some()
         || remove.contains(FieldsMember::CanPublish)
         || remove.contains(FieldsMember::CanReceive))
-        && let Some(channel) = get_user_voice_channel_in_server(&target_user.id, &server.id).await?
+        && let Some(channel) = current_voice_channel.clone()
+        // Nothing to sync if the channel is on no node. The member edit itself is already
+        // committed and audit-logged, so this must not fail the request.
+        && let Some(node) = get_channel_node(&channel).await?
     {
-        let node = get_channel_node(&channel).await?.unwrap();
         let channel = Reference::from_unchecked(&channel).as_channel(db).await?;
 
         sync_user_voice_permissions(
@@ -316,11 +337,13 @@ pub async fn edit(
         .await?;
     };
 
+    // Looked up again rather than reusing `current_voice_channel`: a move above may have
+    // just changed which channel the target is in.
     if remove.contains(&FieldsMember::VoiceChannel)
         && let Some(channel) = get_user_voice_channel_in_server(&target_user.id, &server.id).await?
+        // Nobody to remove if the channel is on no node; the edit is already committed.
+        && let Some(node) = get_channel_node(&channel).await?
     {
-        let node = get_channel_node(&channel).await?.unwrap();
-
         voice_client.remove_user(&node, &user.id, &channel).await?;
     };
 

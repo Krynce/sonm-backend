@@ -1,8 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use futures::future::join_all;
+use once_cell::sync::Lazy;
 use sonm_database::{
-    Channel, Database, Member, MemberCompositeKey, Presence, RelationshipStatus,
+    Channel, Database, Member, MemberCompositeKey, PolicyChange, Presence, RelationshipStatus,
     events::client::{EventV1, ReadyPayloadFields},
     util::permissions::DatabasePermissionQuery,
     voice::{UserVoiceChannel, get_channel_voice_state},
@@ -13,6 +18,30 @@ use sonm_presence::filter_online;
 use sonm_result::Result;
 
 use super::state::{Cache, State};
+
+/// How long a fetched set of policy changes stays usable
+const POLICY_CHANGES_TTL: Duration = Duration::from_secs(300);
+
+/// Policy changes are identical for every connection and change a few times a year, while
+/// `fetch_policy_changes` is a `find` over the whole collection with no filter — once per
+/// connection. Cache the result in-process.
+// ponytail: on expiry several concurrent connections may refetch at once; it is one query,
+// single-flight only if that ever shows up in profiling.
+static POLICY_CHANGES: Lazy<tokio::sync::RwLock<Option<(Instant, Arc<Vec<PolicyChange>>)>>> =
+    Lazy::new(|| tokio::sync::RwLock::new(None));
+
+async fn cached_policy_changes(db: &Database) -> Result<Arc<Vec<PolicyChange>>> {
+    if let Some((fetched_at, changes)) = &*POLICY_CHANGES.read().await {
+        if fetched_at.elapsed() < POLICY_CHANGES_TTL {
+            return Ok(changes.clone());
+        }
+    }
+
+    let changes = Arc::new(db.fetch_policy_changes().await?);
+    *POLICY_CHANGES.write().await = Some((Instant::now(), changes.clone()));
+
+    Ok(changes)
+}
 
 /// Cache Manager
 impl Cache {
@@ -107,10 +136,11 @@ impl State {
             None
         } else {
             Some(
-                db.fetch_policy_changes()
+                cached_policy_changes(db)
                     .await?
-                    .into_iter()
+                    .iter()
                     .filter(|policy| policy.created_time > user.last_acknowledged_policy_change)
+                    .cloned()
                     .map(Into::into)
                     .collect(),
             )
@@ -129,6 +159,16 @@ impl State {
         let server_ids: Vec<String> = members.iter().map(|x| x.id.server.clone()).collect();
         let servers = db.fetch_servers(&server_ids).await?;
         self.cache.servers = servers.iter().cloned().map(|x| (x.id.clone(), x)).collect();
+
+        // Cache our own memberships *before* any permission check: `filter_accessible_channels`
+        // below reads role overrides from here, and without it every channel costs a
+        // `fetch_member` round-trip and loses the role overrides entirely.
+        // Only our own memberships belong here — voice participants are collected separately.
+        self.cache.members = members
+            .iter()
+            .cloned()
+            .map(|x| (x.id.server.clone(), x))
+            .collect();
 
         // Collect channel ids from servers.
         let mut channel_ids = vec![];
@@ -214,12 +254,6 @@ impl State {
                     .collect::<Vec<String>>(),
             )
             .await?;
-
-        self.cache.members = members
-            .iter()
-            .cloned()
-            .map(|x| (x.id.server.clone(), x))
-            .collect();
 
         // Fetch customisations.
         let emojis = if fields.emojis {

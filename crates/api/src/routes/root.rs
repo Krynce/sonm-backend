@@ -1,7 +1,10 @@
+use once_cell::sync::OnceCell;
+use revolt_rocket_okapi::response::OpenApiResponderInner;
+use rocket::response::{self, Responder};
 use rocket::serde::json::Json;
+use rocket::{Request, Response};
 use serde::Serialize;
 use sonm_config::config;
-use sonm_result::Result;
 use std::collections::HashMap;
 
 /// # hCaptcha Configuration
@@ -173,15 +176,48 @@ pub struct SonmConfig {
     pub vapid: String,
 }
 
+/// The assembled config DTO
+///
+/// Every client polls this endpoint on startup and it is built purely from boot-time
+/// configuration, so there is no reason to reassemble it (dozens of clones) per request.
+/// A config change needs a restart to show up here.
+static CONFIG_DTO: OnceCell<SonmConfig> = OnceCell::new();
+
+/// `SonmConfig` served with a `Cache-Control` header
+pub struct CachedConfig(&'static SonmConfig);
+
+impl<'r> Responder<'r, 'static> for CachedConfig {
+    fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
+        Response::build_from(Json(self.0).respond_to(req)?)
+            .raw_header("Cache-Control", "public, max-age=60")
+            .ok()
+    }
+}
+
+impl OpenApiResponderInner for CachedConfig {
+    fn responses(
+        generator: &mut revolt_rocket_okapi::r#gen::OpenApiGenerator,
+    ) -> std::result::Result<
+        revolt_rocket_okapi::revolt_okapi::openapi3::Responses,
+        revolt_rocket_okapi::OpenApiError,
+    > {
+        <Json<SonmConfig> as OpenApiResponderInner>::responses(generator)
+    }
+}
+
 /// # Query Node
 ///
 /// Fetch the server configuration for this Sonm instance.
 #[openapi(tag = "Core")]
 #[get("/")]
-pub async fn root() -> Result<Json<SonmConfig>> {
+pub async fn root() -> CachedConfig {
+    if let Some(dto) = CONFIG_DTO.get() {
+        return CachedConfig(dto);
+    }
+
     let config = config().await;
 
-    Ok(Json(SonmConfig {
+    let dto = SonmConfig {
         sonm: env!("CARGO_PKG_VERSION").to_string(),
         features: SonmFeatures {
             captcha: CaptchaFeature {
@@ -254,7 +290,9 @@ pub async fn root() -> Result<Json<SonmConfig>> {
         ws: config.hosts.gateway,
         app: config.hosts.app,
         vapid: config.push.vapid.public_key,
-    }))
+    };
+
+    CachedConfig(CONFIG_DTO.get_or_init(|| dto))
 }
 
 #[cfg(test)]

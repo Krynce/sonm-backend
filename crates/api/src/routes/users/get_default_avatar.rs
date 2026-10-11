@@ -4,7 +4,7 @@ use rocket::response::{self, Responder};
 use rocket::{Request, Response};
 use schemars::schema::{InstanceType, SchemaObject, SingleOrVec};
 
-pub struct CachedFile((ContentType, Vec<u8>));
+pub struct CachedFile((ContentType, &'static [u8]));
 
 pub static CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
@@ -59,14 +59,16 @@ impl revolt_rocket_okapi::response::OpenApiResponderInner for CachedFile {
 pub async fn default_avatar(target: String) -> CachedFile {
     CachedFile((
         ContentType::PNG,
-        match target.chars().last().unwrap() {
-            '0' | '1' | '2' | '3' | 'S' | 'Z' => include_bytes!("avatars/2.png").to_vec(),
-            '4' | '5' | '6' | '7' | 'T' => include_bytes!("avatars/3.png").to_vec(),
-            '8' | '9' | 'A' | 'B' => include_bytes!("avatars/4.png").to_vec(),
-            'C' | 'D' | 'E' | 'F' | 'V' => include_bytes!("avatars/5.png").to_vec(),
-            'G' | 'H' | 'J' | 'K' | 'W' => include_bytes!("avatars/6.png").to_vec(),
-            'M' | 'N' | 'P' | 'Q' | 'X' => include_bytes!("avatars/7.png").to_vec(),
-            _ => include_bytes!("avatars/1.png").to_vec(),
+        // Served up to 255 times per rate-limit window: hand out the embedded bytes
+        // instead of allocating and copying the PNG on every request.
+        match target.chars().last().unwrap_or('_') {
+            '0' | '1' | '2' | '3' | 'S' | 'Z' => include_bytes!("avatars/2.png").as_slice(),
+            '4' | '5' | '6' | '7' | 'T' => include_bytes!("avatars/3.png").as_slice(),
+            '8' | '9' | 'A' | 'B' => include_bytes!("avatars/4.png").as_slice(),
+            'C' | 'D' | 'E' | 'F' | 'V' => include_bytes!("avatars/5.png").as_slice(),
+            'G' | 'H' | 'J' | 'K' | 'W' => include_bytes!("avatars/6.png").as_slice(),
+            'M' | 'N' | 'P' | 'Q' | 'X' => include_bytes!("avatars/7.png").as_slice(),
+            _ => include_bytes!("avatars/1.png").as_slice(),
         },
     ))
 }

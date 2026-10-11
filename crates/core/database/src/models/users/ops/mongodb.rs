@@ -67,6 +67,25 @@ impl AbstractUsers for MongoDb {
             .await)
     }
 
+    async fn fetch_users_by_username(&self, query: &str, limit: i64) -> Result<Vec<User>> {
+        Ok(self
+            .col::<User>(COL)
+            .find(doc! {
+                "username": {
+                    // Escaped: the text comes straight from a query parameter, and an
+                    // unescaped pattern would be a regex DoS against the database.
+                    "$regex": regex::escape(query),
+                    "$options": "i"
+                }
+            })
+            .limit(limit)
+            .await
+            .map_err(|_| create_database_error!("find", COL))?
+            .filter_map(|s| async { s.ok() })
+            .collect()
+            .await)
+    }
+
     /// Fetch all discriminators in use for a username
     async fn fetch_discriminators_in_use(&self, username: &str) -> Result<Vec<String>> {
         #[derive(Deserialize)]

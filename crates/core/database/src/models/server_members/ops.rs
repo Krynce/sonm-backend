@@ -75,6 +75,16 @@ pub trait AbstractServerMembers: Sync + Send {
     /// Fetch multiple members by their ids
     async fn fetch_members(&self, server_id: &str, ids: &[String]) -> Result<Vec<Member>>;
 
+    /// Fetch members of a server whose nickname contains the given text
+    ///
+    /// `query` is matched literally (case-insensitively), not as a pattern.
+    async fn fetch_members_by_nickname(
+        &self,
+        server_id: &str,
+        query: &str,
+        limit: i64,
+    ) -> Result<Vec<Member>>;
+
     /// Fetch member count of a server
     async fn fetch_member_count(&self, server_id: &str) -> Result<usize>;
 

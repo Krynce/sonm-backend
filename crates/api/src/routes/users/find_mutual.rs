@@ -1,3 +1,4 @@
+use futures::try_join;
 use sonm_database::util::permissions::DatabasePermissionQuery;
 use sonm_database::util::reference::Reference;
 use sonm_database::{Database, User};
@@ -29,9 +30,16 @@ pub async fn mutual(
         .await
         .throw_if_lacking_user_permission(UserPermission::ViewProfile)?;
 
+    // Three independent lookups, one round-trip
+    let (users, servers, channels) = try_join!(
+        db.fetch_mutual_user_ids(&user.id, &target.id),
+        db.fetch_mutual_server_ids(&user.id, &target.id),
+        db.fetch_mutual_channel_ids(&user.id, &target.id)
+    )?;
+
     Ok(Json(v0::MutualResponse {
-        users: db.fetch_mutual_user_ids(&user.id, &target.id).await?,
-        servers: db.fetch_mutual_server_ids(&user.id, &target.id).await?,
-        channels: db.fetch_mutual_channel_ids(&user.id, &target.id).await?,
+        users,
+        servers,
+        channels,
     }))
 }

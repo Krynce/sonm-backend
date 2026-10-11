@@ -28,7 +28,7 @@ pub async fn change_email(
     }
 
     // Ensure given password is correct
-    account.verify_password(&data.current_password)?;
+    account.verify_password(&data.current_password).await?;
 
     // Send email verification for new email
     account

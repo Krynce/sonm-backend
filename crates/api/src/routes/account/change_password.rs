@@ -31,10 +31,10 @@ pub async fn change_password(
     assert_safe(&data.password).await?;
 
     // Ensure given password is correct
-    account.verify_password(&data.current_password)?;
+    account.verify_password(&data.current_password).await?;
 
     // Hash and replace password
-    account.password = hash_password(data.password)?;
+    account.password = hash_password(data.password).await?;
 
     // Commit to database
     account.save(db).await.map(|_| EmptyResponse)

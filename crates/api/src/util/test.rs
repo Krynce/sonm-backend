@@ -64,7 +64,9 @@ impl TestHarness {
         let account = Account {
             id,
             email: email.clone(),
-            password: hash_password("password_insecure".to_string()).unwrap(),
+            password: hash_password("password_insecure".to_string())
+                .await
+                .unwrap(),
             email_normalised: normalise_email(email),
             deletion: None,
             disabled: false,

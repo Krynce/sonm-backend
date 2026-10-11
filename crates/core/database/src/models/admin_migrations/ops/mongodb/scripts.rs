@@ -26,7 +26,7 @@ struct MigrationInfo {
     revision: i32,
 }
 
-pub const LATEST_REVISION: i32 = 55; // MUST BE +1 to last migration
+pub const LATEST_REVISION: i32 = 56; // MUST BE +1 to last migration
 
 pub async fn migrate_database(db: &MongoDb) {
     let migrations = db.col::<Document>("migrations");
@@ -1637,6 +1637,31 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
             .await
             .expect("Failed to update default_permissions");
     };
+
+    if revision <= 55 {
+        info!("Running migration [revision 55 / 11-10-2026]: Index channels for DM lookup");
+
+        db.db()
+            .run_command(doc! {
+                "createIndexes": "channels",
+                "indexes": [
+                    {
+                        "key": {
+                            "recipients": 1_i32
+                        },
+                        "name": "recipients"
+                    },
+                    {
+                        "key": {
+                            "user": 1_i32
+                        },
+                        "name": "user"
+                    }
+                ]
+            })
+            .await
+            .expect("Failed to create channels index");
+    }
 
     // Reminder to update LATEST_REVISION when adding new migrations.
     LATEST_REVISION.max(revision)

@@ -33,6 +33,11 @@ pub async fn set_default_channel_permissions(
 
     permissions.throw_if_lacking_channel_permission(ChannelPermission::ManagePermissions)?;
 
+    // `calculate_channel_permissions` already fetched the server for a server channel.
+    // Copy it out here so `query` — which borrows `channel` — is done with before the
+    // update below; a clone is cheaper than the second `fetch_server` this replaces.
+    let server = query.server_ref().as_deref().cloned();
+
     match &channel {
         Channel::Group { .. } => {
             if let DataDefaultChannelPermissions::Value { permissions } = data {
@@ -86,11 +91,6 @@ pub async fn set_default_channel_permissions(
         }
         _ => return Err(create_error!(InvalidOperation)),
     }
-
-    let server = match channel.server() {
-        Some(server_id) => Some(Reference::from_unchecked(server_id).as_server(db).await?),
-        None => None,
-    };
 
     sync_voice_permissions(db, voice_client, &channel, server.as_ref(), None).await?;
 

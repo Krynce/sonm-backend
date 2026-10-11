@@ -220,6 +220,32 @@ impl AbstractServerMembers for MongoDb {
             .await)
     }
 
+    async fn fetch_members_by_nickname(
+        &self,
+        server_id: &str,
+        query: &str,
+        limit: i64,
+    ) -> Result<Vec<Member>> {
+        Ok(self
+            .col::<Member>(COL)
+            .find(doc! {
+                "_id.server": server_id,
+                "pending_deletion_at": {"$exists": false},
+                "nickname": {
+                    // Escaped: the text comes straight from a query parameter, and an
+                    // unescaped pattern would be a regex DoS against the database.
+                    "$regex": regex::escape(query),
+                    "$options": "i"
+                }
+            })
+            .limit(limit)
+            .await
+            .map_err(|_| create_database_error!("find", COL))?
+            .filter_map(|s| async { s.ok() })
+            .collect()
+            .await)
+    }
+
     /// Fetch member count of a server
     async fn fetch_member_count(&self, server_id: &str) -> Result<usize> {
         self.col::<Member>(COL)

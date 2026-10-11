@@ -26,7 +26,7 @@ pub async fn password_reset(
     assert_safe(&data.password).await?;
 
     // Update the account
-    account.password = hash_password(data.password)?;
+    account.password = hash_password(data.password).await?;
     account.password_reset = None;
     account.lockout = None;
 

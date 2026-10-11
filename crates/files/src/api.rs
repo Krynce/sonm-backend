@@ -6,7 +6,7 @@ use std::{
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, Path, State},
-    http::{HeaderMap, Method, header},
+    http::{HeaderMap, Method, StatusCode, header},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
@@ -236,21 +236,46 @@ async fn upload_file(
         nanoid::nanoid!(42)
     };
 
-    // Determine the mime type for the file
-    let mime_type = determine_mime_type(&mut file.contents, &buf, &filename);
+    // Inspect the file: mime detection reads it from disk and may shell out to ffprobe,
+    // metadata generation decodes the whole image for the thumbhash. All of it is
+    // synchronous CPU work, so it runs off the tokio workers.
+    let (contents, buf, mime_type, metadata) = {
+        let mut contents = file.contents;
+        let filename = filename.clone();
+        let blocked_mime_types = config.files.blocked_mime_types.clone();
+        let limit = config.files.limit.clone();
 
-    // Check blocklist for mime type
-    if config
-        .files
-        .blocked_mime_types
-        .iter()
-        .any(|m| m == mime_type)
-    {
-        return Err(create_error!(FileTypeNotAllowed));
-    }
+        report_internal_error!(
+            tokio::task::spawn_blocking(move || -> Result<_> {
+                let mime_type = determine_mime_type(&mut contents, &buf, &filename);
 
-    // Determine metadata for the file
-    let metadata = generate_metadata(&file.contents, mime_type);
+                // Check blocklist for mime type
+                if blocked_mime_types.iter().any(|m| m == mime_type) {
+                    return Err(create_error!(FileTypeNotAllowed));
+                }
+
+                // Reject decompression bombs *before* anything decodes the pixels: the
+                // dimensions come out of the image header, so a 200 MP PNG that fits well
+                // inside the byte limit is caught here rather than in the decoder.
+                if let Some((width, height)) = sonm_storage::image_size(&contents) {
+                    if width < limit.min_resolution[0]
+                        || height < limit.min_resolution[1]
+                        || width > limit.max_pixel_side
+                        || height > limit.max_pixel_side
+                        || width.saturating_mul(height)
+                            > limit.max_mega_pixels.saturating_mul(1_000_000)
+                    {
+                        return Err(create_error!(ImageProcessingFailed));
+                    }
+                }
+
+                let metadata = generate_metadata(&contents, mime_type);
+
+                Ok((contents, buf, mime_type, metadata))
+            })
+            .await
+        )??
+    };
 
     // Block non-images for non-attachment uploads
     if !matches!(tag, Tag::attachments) && !matches!(metadata, Metadata::Image { .. }) {
@@ -281,7 +306,7 @@ async fn upload_file(
     };
 
     // Strip metadata
-    let (buf, metadata) = strip_metadata(file.contents, buf, metadata, mime_type).await?;
+    let (buf, metadata) = strip_metadata(contents, buf, metadata, mime_type).await?;
 
     // Virus scan files if ClamAV is configured
     if matches!(metadata, Metadata::File)
@@ -348,6 +373,20 @@ async fn upload_file(
 /// Header value used for cache control
 pub static CACHE_CONTROL: &str = "public, max-age=604800, must-revalidate";
 
+/// Whether the client already holds this exact representation
+///
+/// `must-revalidate` means clients come back to us even while the entry is fresh; answering
+/// 304 from the hash we already have skips the S3 fetch, the decrypt and — for previews —
+/// regenerating the thumbnail.
+fn matches_etag(headers: &HeaderMap, etag: &str) -> bool {
+    headers
+        .get(header::IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| {
+            value == "*" || value.split(',').any(|candidate| candidate.trim() == etag)
+        })
+}
+
 /// Fetch preview of file
 ///
 /// This route will only return image content. <br>
@@ -380,6 +419,7 @@ pub static CACHE_CONTROL: &str = "public, max-age=604800, must-revalidate";
 )]
 async fn fetch_preview(
     State(db): State<Database>,
+    headers: HeaderMap,
     Path((tag, file_id)): Path<(Tag, String)>,
 ) -> Result<Response> {
     let tag_str: &'static str = tag.clone().into();
@@ -397,6 +437,19 @@ async fn fetch_preview(
 
     let hash = file.as_hash(&db).await?;
 
+    // The preview is a pure function of the stored bytes and the tag
+    let etag = format!("\"{}-{tag_str}\"", hash.processed_hash);
+    if matches_etag(&headers, &etag) {
+        return Ok((
+            StatusCode::NOT_MODIFIED,
+            [
+                (header::ETAG, etag),
+                (header::CACHE_CONTROL, CACHE_CONTROL.to_owned()),
+            ],
+        )
+            .into_response());
+    }
+
     let mut data = None;
 
     // If animated is unset, check the file contents to see if it is animated and update the filehash
@@ -409,7 +462,9 @@ async fn fetch_preview(
             let file_data = retrieve_file_by_hash(&hash).await?;
 
             let mut named_file = NamedTempFile::new().to_internal_error()?;
-            named_file.write(&file_data).to_internal_error()?;
+            // `write` may write only part of the buffer, leaving `is_animated` below to
+            // probe a truncated file.
+            named_file.write_all(&file_data).to_internal_error()?;
 
             data = Some(file_data);
 
@@ -439,17 +494,18 @@ async fn fetch_preview(
     };
 
     // Read image and create thumbnail
-    let data = create_thumbnail(
-        decode_image(&mut Cursor::new(data), &file.content_type)?,
-        tag_str,
-    )
-    .await;
+    // Decoding is pure CPU, so it stays off the tokio worker; `create_thumbnail` does
+    // the same for its own encoding step.
+    let image =
+        tokio::task::block_in_place(|| decode_image(&mut Cursor::new(data), &file.content_type))?;
+    let data = create_thumbnail(image, tag_str).await;
 
     Ok((
         [
-            (header::CONTENT_TYPE, "image/webp"),
-            (header::CONTENT_DISPOSITION, "inline"),
-            (header::CACHE_CONTROL, CACHE_CONTROL),
+            (header::CONTENT_TYPE, "image/webp".to_owned()),
+            (header::CONTENT_DISPOSITION, "inline".to_owned()),
+            (header::CACHE_CONTROL, CACHE_CONTROL.to_owned()),
+            (header::ETAG, etag),
         ],
         data,
     )
@@ -475,6 +531,7 @@ async fn fetch_preview(
 )]
 async fn fetch_file(
     State(db): State<Database>,
+    headers: HeaderMap,
     Path((tag, file_id, file_name)): Path<(Tag, String, String)>,
 ) -> Result<Response> {
     let tag: &'static str = tag.clone().into();
@@ -504,12 +561,26 @@ async fn fetch_file(
     }
 
     let hash = file.as_hash(&db).await?;
+
+    let etag = format!("\"{}\"", hash.processed_hash);
+    if matches_etag(&headers, &etag) {
+        return Ok((
+            StatusCode::NOT_MODIFIED,
+            [
+                (header::ETAG, etag),
+                (header::CACHE_CONTROL, CACHE_CONTROL.to_owned()),
+            ],
+        )
+            .into_response());
+    }
+
     retrieve_file_by_hash(&hash).await.map(|data| {
         (
             [
                 (header::CONTENT_TYPE, hash.content_type),
                 (header::CONTENT_DISPOSITION, "attachment".to_owned()),
                 (header::CACHE_CONTROL, CACHE_CONTROL.to_owned()),
+                (header::ETAG, etag),
             ],
             data,
         )

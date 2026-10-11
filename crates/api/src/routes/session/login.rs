@@ -61,7 +61,7 @@ pub async fn login(
                 }
 
                 // Verify the password is correct.
-                if let Err(err) = account.verify_password(&password) {
+                if let Err(err) = account.verify_password(&password).await {
                     db.bump_lockout_count(&account.id).await?;
                     return Err(err);
                 }

@@ -23,7 +23,7 @@ serde_json = { workspace = true }
 
 # Async runtime
 async-recursion = { workspace = true }
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "rt-multi-thread"] }
 
 # Web requests
 reqwest = { workspace = true, features = ["json"] }
@@ -49,4 +49,4 @@ utoipa-scalar = { workspace = true, features = ["axum"] }
 utoipa = { workspace = true, features = ["axum_extras", "ulid"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }

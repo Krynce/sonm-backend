@@ -1,4 +1,6 @@
-use futures::future::join_all;
+use std::collections::HashMap;
+
+use futures::{future::join_all, try_join};
 use rocket::{State, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use sonm_database::{
@@ -8,6 +10,9 @@ use sonm_database::{
 use sonm_models::v0;
 use sonm_permissions::PermissionQuery;
 use sonm_result::{Result, create_error};
+
+/// How many candidates each half of the search may return before we rank them
+const CANDIDATE_LIMIT: i64 = 50;
 
 /// # Query Parameters
 #[derive(Deserialize, JsonSchema, FromForm)]
@@ -49,31 +54,46 @@ pub async fn member_experimental_query(
         return Err(create_error!(NotFound));
     }
 
-    let mut members = db.fetch_all_members(&server.id).await?;
+    // A member matches on their nickname, or — when they have none — on their username.
+    // Both halves are matched and capped by MongoDB: fetching every member of the server
+    // to filter in Rust meant reading the whole collection to return ten rows.
+    let (nickname_matches, username_matches) = try_join!(
+        db.fetch_members_by_nickname(&server.id, &options.query, CANDIDATE_LIMIT),
+        db.fetch_users_by_username(&options.query, CANDIDATE_LIMIT)
+    )?;
 
-    let mut user_ids = vec![];
-    for member in &members {
-        user_ids.push(member.id.user.clone());
+    let username_match_ids: Vec<String> = username_matches
+        .iter()
+        .map(|user| user.id.clone())
+        .collect();
+
+    let mut candidates: HashMap<String, Member> = nickname_matches
+        .into_iter()
+        .map(|member| (member.id.user.clone(), member))
+        .collect();
+
+    for member in db.fetch_members(&server.id, &username_match_ids).await? {
+        // A nickname shadows the username for matching purposes
+        if member.nickname.is_none() {
+            candidates.entry(member.id.user.clone()).or_insert(member);
+        }
     }
 
-    let mut users = db.fetch_users(&user_ids).await?;
+    let mut members: Vec<Member> = candidates.into_values().collect();
+    let mut users = db
+        .fetch_users(
+            &members
+                .iter()
+                .map(|member| member.id.user.clone())
+                .collect::<Vec<String>>(),
+        )
+        .await?;
 
     // Ensure the lists match up exactly
     members.sort_by(|a, b| a.id.user.cmp(&b.id.user));
     users.sort_by(|a, b| a.id.cmp(&b.id));
 
-    // Filter all matches
-    let mut zipped_vec: Vec<(Member, User)> = members
-        .into_iter()
-        .zip(users)
-        .filter(|(member, user)| {
-            if let Some(nickname) = &member.nickname {
-                nickname.contains(&options.query)
-            } else {
-                user.username.contains(&options.query)
-            }
-        })
-        .collect();
+    let mut zipped_vec: Vec<(Member, User)> = members.into_iter().zip(users).collect();
 
     // Sort remaining matches by length
     zipped_vec.sort_by(|(member_a, user_a), (member_b, user_b)| {

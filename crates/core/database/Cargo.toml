@@ -77,7 +77,7 @@ async-trait = { workspace = true }
 async-recursion = { workspace = true }
 
 # Async
-tokio = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt"], optional = true }
 
 # Axum Impl
 axum = { workspace = true, optional = true }

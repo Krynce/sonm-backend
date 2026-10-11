@@ -3,7 +3,7 @@ use iso8601_timestamp::{Duration, Timestamp};
 use nanoid::nanoid;
 use serde_json::json;
 use sonm_config::config;
-use sonm_result::Result;
+use sonm_result::{Result, ToSonmError};
 
 use crate::{
     Database, MFATicket, Session,
@@ -301,7 +301,7 @@ impl Account {
             Ok(account)
         } else {
             // Hash the user's password
-            let password = hash_password(plaintext_password)?;
+            let password = hash_password(plaintext_password).await?;
 
             // Create a new account
             let mut account = Account {
@@ -529,18 +529,28 @@ impl Account {
     }
 
     /// Verify a user's password is correct
-    pub fn verify_password(&self, plaintext_password: &str) -> Result<()> {
-        argon2::verify_encoded(&self.password, plaintext_password.as_bytes())
-            .map(|v| {
-                if v {
-                    Ok(())
-                } else {
-                    Err(create_error!(InvalidCredentials))
-                }
-            })
-            // To prevent user enumeration, we should ignore
-            // the error and pretend the password is wrong.
-            .map_err(|_| create_error!(InvalidCredentials))?
+    ///
+    /// argon2 is deliberately expensive — tens of ms of CPU — so it never runs on a tokio
+    /// worker thread.
+    pub async fn verify_password(&self, plaintext_password: &str) -> Result<()> {
+        let hash = self.password.clone();
+        let plaintext_password = plaintext_password.to_owned();
+
+        tokio::task::spawn_blocking(move || {
+            argon2::verify_encoded(&hash, plaintext_password.as_bytes())
+        })
+        .await
+        .to_internal_error()?
+        .map(|v| {
+            if v {
+                Ok(())
+            } else {
+                Err(create_error!(InvalidCredentials))
+            }
+        })
+        // To prevent user enumeration, we should ignore
+        // the error and pretend the password is wrong.
+        .map_err(|_| create_error!(InvalidCredentials))?
     }
 
     /// Validate an MFA response
@@ -555,7 +565,7 @@ impl Account {
         match response {
             v0::MFAResponse::Password { password } => {
                 if allowed_methods.contains(&MFAMethod::Password) {
-                    self.verify_password(&password)
+                    self.verify_password(&password).await
                 } else {
                     Err(create_error!(DisallowedMFAMethod))
                 }

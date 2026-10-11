@@ -26,7 +26,7 @@ pub async fn init() {
                     config.files.clamd_host
                 );
 
-                std::thread::sleep(Duration::from_secs(10));
+                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         }
     }
@@ -38,11 +38,11 @@ pub async fn is_malware(buf: &[u8]) -> Result<bool> {
     if config.files.clamd_host.is_empty() {
         Ok(false)
     } else {
-        let scan_response = report_internal_error!(revolt_clamav_client::scan_buffer_tcp(
-            buf,
-            config.files.clamd_host,
-            None
-        ))?;
+        // `scan_buffer_tcp` writes the whole buffer over a blocking socket and waits for
+        // clamd's verdict; `block_in_place` keeps the borrow of `buf` without a copy.
+        let scan_response = report_internal_error!(tokio::task::block_in_place(|| {
+            revolt_clamav_client::scan_buffer_tcp(buf, config.files.clamd_host, None)
+        }))?;
 
         report_internal_error!(revolt_clamav_client::clean(&scan_response)).map(|v| !v)
     }

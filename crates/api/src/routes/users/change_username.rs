@@ -44,6 +44,7 @@ pub async fn change_username(
 
     account
         .verify_password(&data.password)
+        .await
         .map_err(|_| create_error!(InvalidCredentials))?;
 
     user.update_username(db, data.username).await?;

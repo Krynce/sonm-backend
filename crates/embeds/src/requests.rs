@@ -217,26 +217,30 @@ impl Request {
                             let reader = &mut Cursor::new(&bytes);
 
                             if matches!(mime.subtype(), mime::GIF) {
-                                if is_valid_image(reader, "image/gif") {
+                                // Validating a GIF decodes every frame.
+                                if tokio::task::block_in_place(|| {
+                                    is_valid_image(reader, "image/gif")
+                                }) {
                                     Ok(("image/gif".to_owned(), bytes.to_vec()))
                                 } else {
                                     Err(create_error!(FileTypeNotAllowed))
                                 }
                             } else {
+                                let image = tokio::task::block_in_place(|| {
+                                    decode_image(reader, mime.as_ref())
+                                })?;
+
                                 Ok((
                                     "image/webp".to_owned(),
-                                    create_thumbnail(
-                                        decode_image(reader, mime.as_ref())?,
-                                        "attachments",
-                                    )
-                                    .await,
+                                    create_thumbnail(image, "attachments").await,
                                 ))
                             }
                         } else {
                             let mut file = report_internal_error!(tempfile::NamedTempFile::new())?;
                             report_internal_error!(file.write_all(&bytes))?;
 
-                            if video_size(&file).is_some() {
+                            // `video_size` shells out to a synchronous `ffprobe`.
+                            if tokio::task::block_in_place(|| video_size(&file)).is_some() {
                                 Ok((mime.to_string(), bytes.to_vec()))
                             } else {
                                 Err(create_error!(FileTypeNotAllowed))
@@ -277,8 +281,10 @@ impl Request {
                 }
             };
 
+            // SVGs are fully parsed here, not just header-probed.
+            let body = read_body(request.response).await?;
             if let Some((width, height)) =
-                image_size_vec(&read_body(request.response).await?, request.mime.as_ref())
+                tokio::task::block_in_place(|| image_size_vec(&body, request.mime.as_ref()))
             {
                 Ok(Some(Image {
                     url: url.to_owned(),
@@ -317,7 +323,8 @@ impl Request {
             let mut file = report_internal_error!(tempfile::NamedTempFile::new())?;
             report_internal_error!(file.write_all(&read_body(response).await?))?;
 
-            if let Some((width, height)) = video_size(&file) {
+            // `video_size` shells out to a synchronous `ffprobe`.
+            if let Some((width, height)) = tokio::task::block_in_place(|| video_size(&file)) {
                 Ok(Some(Video {
                     url: url.to_owned(),
                     width: width as usize,

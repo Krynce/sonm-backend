@@ -149,6 +149,28 @@ pub async fn create_database(db: &MongoDb) {
     .expect("Failed to create username index.");
 
     db.run_command(doc! {
+        "createIndexes": "channels",
+        "indexes": [
+            // `find_direct_messages` runs on every gateway connection and is an `$or` over
+            // these two fields; without an index on both branches it scans the collection.
+            {
+                "key": {
+                    "recipients": 1_i32
+                },
+                "name": "recipients"
+            },
+            {
+                "key": {
+                    "user": 1_i32
+                },
+                "name": "user"
+            }
+        ]
+    })
+    .await
+    .expect("Failed to create channels index.");
+
+    db.run_command(doc! {
         "createIndexes": "messages",
         "indexes": [
             {

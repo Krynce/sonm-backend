@@ -1,3 +1,4 @@
+use futures::try_join;
 use rocket::{State, serde::json::Json};
 use sonm_database::{Channel, Database, Invite, util::reference::Reference};
 use sonm_models::v0;
@@ -16,8 +17,7 @@ pub async fn fetch(
         Invite::Server {
             channel, creator, ..
         } => {
-            let channel = db.fetch_channel(&channel).await?;
-            let user = db.fetch_user(&creator).await?;
+            let (channel, user) = try_join!(db.fetch_channel(&channel), db.fetch_user(&creator))?;
 
             match channel {
                 Channel::TextChannel {
@@ -50,8 +50,7 @@ pub async fn fetch(
         Invite::Group {
             channel, creator, ..
         } => {
-            let channel = db.fetch_channel(&channel).await?;
-            let user = db.fetch_user(&creator).await?;
+            let (channel, user) = try_join!(db.fetch_channel(&channel), db.fetch_user(&creator))?;
 
             match channel {
                 Channel::Group {

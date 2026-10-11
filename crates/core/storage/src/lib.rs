@@ -14,25 +14,38 @@ use tempfile::NamedTempFile;
 
 pub const AUTHENTICATION_TAG_SIZE_BYTES: usize = 16;
 
+/// Shared S3 client
+///
+/// `Client::from_conf` builds a fresh connection pool and credentials provider, so building
+/// one per operation threw away every kept-alive connection.
+static S3: tokio::sync::OnceCell<implementation::S3Storage<implementation::EncryptionKey>> =
+    tokio::sync::OnceCell::const_new();
+
+async fn s3() -> &'static implementation::S3Storage<implementation::EncryptionKey> {
+    S3.get_or_init(|| async {
+        let encryption = implementation::EncryptionKey::from_config().await;
+        implementation::S3Storage::from_config(encryption).await
+    })
+    .await
+}
+
 /// Fetch a file from S3 (and decrypt it)
 pub async fn fetch_from_s3(bucket_id: &str, path: &str, iv: &str) -> Result<Vec<u8>> {
-    let encryption = implementation::EncryptionKey::from_config().await;
-    let storage = implementation::S3Storage::from_config(encryption).await;
-    report_internal_error!(storage.fetch_and_decrypt_file(bucket_id, path, iv).await)
+    report_internal_error!(s3().await.fetch_and_decrypt_file(bucket_id, path, iv).await)
 }
 
 /// Encrypt and upload a file to S3 (returning its nonce/IV)
 pub async fn upload_to_s3(bucket_id: &str, path: &str, buf: &[u8]) -> Result<String> {
-    let encryption = implementation::EncryptionKey::from_config().await;
-    let storage = implementation::S3Storage::from_config(encryption).await;
-    report_internal_error!(storage.encrypt_and_upload_file(bucket_id, path, buf).await)
+    report_internal_error!(
+        s3().await
+            .encrypt_and_upload_file(bucket_id, path, buf)
+            .await
+    )
 }
 
 /// Delete a file from S3 by path
 pub async fn delete_from_s3(bucket_id: &str, path: &str) -> Result<()> {
-    let encryption = implementation::EncryptionKey::from_config().await;
-    let storage = implementation::S3Storage::from_config(encryption).await;
-    report_internal_error!(storage.delete_file(bucket_id, path).await)
+    report_internal_error!(s3().await.delete_file(bucket_id, path).await)
 }
 
 /// Determine size of image at temp file
@@ -210,7 +223,13 @@ pub fn is_valid_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> b
 }
 
 /// Create thumbnail from given image
+///
+/// Must be called from a multi-threaded tokio runtime.
 pub async fn create_thumbnail(image: DynamicImage, tag: &str) -> Vec<u8> {
     let media = MediaImpl::from_config().await;
-    media.create_thumbnail(image, tag)
+
+    // Resizing and WebP-encoding a full-size image is tens to hundreds of ms of CPU;
+    // `block_in_place` keeps it off the tokio worker without moving the image to another
+    // thread (which `spawn_blocking` would require).
+    tokio::task::block_in_place(|| media.create_thumbnail(image, tag))
 }
