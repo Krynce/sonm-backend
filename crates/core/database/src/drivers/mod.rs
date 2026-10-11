@@ -65,7 +65,13 @@ impl DatabaseInfo {
                 // queue behind, and to a 30 s server selection timeout, which turns a dead
                 // MongoDB into 30 s hangs instead of fast errors. Values in the connection
                 // string still win: `parse` has already applied them.
-                options.max_pool_size = options.max_pool_size.or(Some(50));
+                //
+                // 20 is deliberately modest: six services connect, so this is a ceiling of
+                // 120 connections, against a server that allows ~409 and runs under a
+                // 640 MB limit at roughly 1 MB of thread stack per connection. Steady
+                // state is ~33 for the whole stack, so this is ample headroom without
+                // re-creating the OOM that phase 0 fixed.
+                options.max_pool_size = options.max_pool_size.or(Some(20));
                 options.min_pool_size = options.min_pool_size.or(Some(5));
                 options.connect_timeout = options
                     .connect_timeout
