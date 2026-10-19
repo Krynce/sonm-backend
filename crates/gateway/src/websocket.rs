@@ -497,8 +497,13 @@ async fn worker(
                 let msg = match result {
                     Ok(Some(msg)) => msg,
                     Ok(None) => {
-                        warn!("Received a None message!");
-                        metrics::READ_ERRORS.fetch_add(1, Ordering::Relaxed);
+                        // End of stream: this is what an ordinary disconnect looks like, so
+                        // it is not counted. Upstream reported it to Sentry on every close,
+                        // which is half of the flood this module exists to stop; main.rs
+                        // already logs the disconnect.
+                        #[cfg(debug_assertions)]
+                        info!("Stream from {addr:?} ended");
+
                         return;
                     }
                     Err(e) => {
