@@ -246,7 +246,7 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
 
                     let sessions = from_bson::<Vec<Session>>(sessions.clone()).unwrap();
                     for session in sessions {
-                        info!("Converting session {} to new format.", &session.id);
+                        info!("Converting session {} to new format.", session.id);
 
                         let mut doc = doc! {
                             "_id": session.id,
@@ -315,7 +315,7 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
                         LastMessage::Id(id) => id,
                     };
 
-                    info!("Converting session {} to new format.", &channel_id);
+                    info!("Converting session {} to new format.", channel_id);
                     db.col::<Document>("channels")
                         .update_one(
                             doc! {
@@ -333,7 +333,7 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
                         .await
                         .unwrap();
                 } else {
-                    info!("{} has no last_message.", &channel_id);
+                    info!("{} has no last_message.", channel_id);
                 }
             }
         }
@@ -1414,7 +1414,7 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
 
         while let Some(server) = servers.next().await {
             let mut ordered_roles = server.roles.clone().into_iter().collect::<Vec<_>>();
-            ordered_roles.sort_by(|(_, role_a), (_, role_b)| role_a.rank.cmp(&role_b.rank));
+            ordered_roles.sort_by_key(|(_, role_a)| role_a.rank);
             let ordered_roles = ordered_roles
                 .into_iter()
                 .map(|(id, _)| id)

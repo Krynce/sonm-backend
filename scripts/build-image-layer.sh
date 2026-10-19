@@ -1,9 +1,26 @@
 #!/bin/sh
 # If you're having trouble building this locally or on your CI, try lowering
 # the job count via CARGO_BUILD_JOBS. It defaults to 10.
+#
+# The crate lists are derived from the manifests already in the tree: apps are crates/<name>,
+# libraries are crates/core/<name>. The only list of crates is the set of COPY lines in the
+# Dockerfile; adding a crate here is not needed and used to silently break layer caching.
 
-APPS="api gateway files embeds scheduler push voice"
-LIBS="config database storage models parser permissions presence result ratelimits"
+app_crates() {
+  for manifest in crates/*/Cargo.toml; do
+    [ -f "$manifest" ] || continue
+    name="${manifest#crates/}"
+    echo "${name%/Cargo.toml}"
+  done
+}
+
+lib_crates() {
+  for manifest in crates/core/*/Cargo.toml; do
+    [ -f "$manifest" ] || continue
+    name="${manifest#crates/core/}"
+    echo "${name%/Cargo.toml}"
+  done
+}
 
 if [ -z "$TARGETARCH" ]; then
   :
@@ -26,11 +43,11 @@ tools() {
 }
 
 deps() {
-  for app in $APPS; do
+  for app in $(app_crates); do
     mkdir -p "crates/$app/src"
     echo 'fn main() { panic!("stub"); }' > "crates/$app/src/main.rs"
   done
-  for lib in $LIBS; do
+  for lib in $(lib_crates); do
     mkdir -p "crates/core/$lib/src"
     echo '' > "crates/core/$lib/src/lib.rs"
   done
@@ -43,8 +60,8 @@ deps() {
 }
 
 apps() {
-  for app in $APPS; do touch -am "crates/$app/src/main.rs"; done
-  for lib in $LIBS; do touch -am "crates/core/$lib/src/lib.rs"; done
+  for app in $(app_crates); do touch -am "crates/$app/src/main.rs"; done
+  for lib in $(lib_crates); do touch -am "crates/core/$lib/src/lib.rs"; done
 
   if [ -z "$TARGETARCH" ]; then
     cargo build -j "${CARGO_BUILD_JOBS:-10}" --locked --release

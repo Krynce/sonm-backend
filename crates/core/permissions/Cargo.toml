@@ -3,6 +3,7 @@ name = "sonm-permissions"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+publish = false
 authors = ["Paul Makles <me@insrt.uk>"]
 description = "Sonm: Permission Logic"
 repository = "https://github.com/krynce/sonm-backend"

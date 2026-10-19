@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Reverse};
 
 use sonm_permissions::{
     ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, Override, PermissionQuery, RelationshipStatus,
@@ -166,7 +166,7 @@ impl PermissionQuery for DatabasePermissionQuery<'_> {
                 })
                 .collect::<Vec<(i64, Override)>>();
 
-            roles.sort_by(|a, b| b.0.cmp(&a.0));
+            roles.sort_by_key(|(rank, _)| Reverse(*rank));
             roles.into_iter().map(|(_, v)| v).collect()
         } else {
             vec![]
@@ -273,7 +273,7 @@ impl PermissionQuery for DatabasePermissionQuery<'_> {
                             })
                             .collect::<Vec<(i64, Override)>>();
 
-                        roles.sort_by(|a, b| b.0.cmp(&a.0));
+                        roles.sort_by_key(|(rank, _)| Reverse(*rank));
                         roles.into_iter().map(|(_, v)| v).collect()
                     } else {
                         vec![]
@@ -355,11 +355,10 @@ impl PermissionQuery for DatabasePermissionQuery<'_> {
                             } else {
                                 None
                             }
+                        && server == &known_server.id
                     {
-                        if server == &known_server.id {
-                            // Already cached, return early.
-                            return;
-                        }
+                        // Already cached, return early.
+                        return;
                     }
 
                     if let Ok(server) = self.database.fetch_server(server).await {

@@ -1,6 +1,6 @@
 use iso8601_timestamp::Timestamp;
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use super::File;
 
@@ -11,13 +11,15 @@ use validator::Validate;
 ///
 /// Block zero width space
 /// Block lookalike characters
-pub static RE_USERNAME: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\p{L}|[\d_.-])+$").unwrap());
+pub static RE_USERNAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\p{L}|[\d_.-])+$").unwrap());
 
 /// Regex for valid display names
 ///
 /// Block zero width space
 /// Block newline and carriage return
-pub static RE_DISPLAY_NAME: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^\u200B\n\r]+$").unwrap());
+pub static RE_DISPLAY_NAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[^\u200B\n\r]+$").unwrap());
 
 auto_derived_partial!(
     /// User
@@ -226,7 +228,7 @@ auto_derived!(
         /// New display name
         #[cfg_attr(
             feature = "validator",
-            validate(length(min = 2, max = 32), regex = "RE_DISPLAY_NAME")
+            validate(length(min = 2, max = 32), regex(path = "RE_DISPLAY_NAME"))
         )]
         pub display_name: Option<String>,
         /// New pronouns
@@ -237,12 +239,12 @@ auto_derived!(
         pub avatar: Option<String>,
 
         /// New user status
-        #[cfg_attr(feature = "validator", validate)]
+        #[cfg_attr(feature = "validator", validate(nested))]
         pub status: Option<UserStatus>,
         /// New user profile data
         ///
         /// This is applied as a partial.
-        #[cfg_attr(feature = "validator", validate)]
+        #[cfg_attr(feature = "validator", validate(nested))]
         pub profile: Option<DataUserProfile>,
 
         /// Bitfield of user badges

@@ -5,4 +5,4 @@ set -e
 : "${TEST_DB:=MONGODB}"
 export TEST_DB
 
-cargo nextest run
+cargo nextest run --locked

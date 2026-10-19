@@ -269,10 +269,10 @@ impl Member {
     pub fn get_ranking(&self, server: &Server) -> i64 {
         let mut value = i64::MAX;
         for role in &self.roles {
-            if let Some(role) = server.roles.get(role) {
-                if role.rank < value {
-                    value = role.rank;
-                }
+            if let Some(role) = server.roles.get(role)
+                && role.rank < value
+            {
+                value = role.rank;
             }
         }
 
@@ -306,8 +306,8 @@ impl Member {
         .p(self.id.server.to_string())
         .await;
 
-        if !silent {
-            if let Some(id) = server
+        if !silent
+            && let Some(id) = server
                 .system_messages
                 .as_ref()
                 .and_then(|x| match intention {
@@ -315,24 +315,23 @@ impl Member {
                     RemovalIntention::Kick => x.user_kicked.as_ref(),
                     RemovalIntention::Ban => x.user_banned.as_ref(),
                 })
-            {
-                match intention {
-                    RemovalIntention::Leave => SystemMessage::UserLeft {
-                        id: self.id.user.clone(),
-                    },
-                    RemovalIntention::Kick => SystemMessage::UserKicked {
-                        id: self.id.user.clone(),
-                    },
-                    RemovalIntention::Ban => SystemMessage::UserBanned {
-                        id: self.id.user.clone(),
-                    },
-                }
-                .into_message(id.to_string())
-                // TODO: support notifications here in the future?
-                .send_without_notifications(db, None, None, false, false, false)
-                .await
-                .ok();
+        {
+            match intention {
+                RemovalIntention::Leave => SystemMessage::UserLeft {
+                    id: self.id.user.clone(),
+                },
+                RemovalIntention::Kick => SystemMessage::UserKicked {
+                    id: self.id.user.clone(),
+                },
+                RemovalIntention::Ban => SystemMessage::UserBanned {
+                    id: self.id.user.clone(),
+                },
             }
+            .into_message(id.to_string())
+            // TODO: support notifications here in the future?
+            .send_without_notifications(db, None, None, false, false, false)
+            .await
+            .ok();
         }
 
         Ok(())

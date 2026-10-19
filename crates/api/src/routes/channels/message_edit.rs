@@ -81,15 +81,11 @@ pub async fn edit(
     message.update(db, partial, vec![]).await?;
 
     // Queue up a task for processing embeds if the we have sufficient permissions
-    if permissions.has_channel_permission(ChannelPermission::SendEmbeds) {
-        if let Some(content) = edit.content {
-            tasks::process_embeds::queue(
-                message.channel.to_string(),
-                message.id.to_string(),
-                content,
-            )
+    if permissions.has_channel_permission(ChannelPermission::SendEmbeds)
+        && let Some(content) = edit.content
+    {
+        tasks::process_embeds::queue(message.channel.to_string(), message.id.to_string(), content)
             .await;
-        }
     }
 
     Ok(Json(message.into_model(None, None)))

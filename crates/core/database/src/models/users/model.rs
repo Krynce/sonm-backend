@@ -262,10 +262,10 @@ impl User {
             return RelationshipStatus::User;
         }
 
-        if let Some(relations) = &self.relations {
-            if let Some(relationship) = relations.iter().find(|x| x.id == user_b) {
-                return relationship.status.clone();
-            }
+        if let Some(relations) = &self.relations
+            && let Some(relationship) = relations.iter().find(|x| x.id == user_b)
+        {
+            return relationship.status.clone();
         }
 
         RelationshipStatus::None
@@ -307,8 +307,10 @@ impl User {
     ///
     /// This will check if the username is a blocked name or contains a blocked pattern.
     fn validate_username(username: &str) -> Result<()> {
+        use validator::ValidateLength;
+
         if !USERNAME_CODEPOINT_REGEX.is_match(username)
-            || !validator::validate_length(username, Some(2), Some(32), None)
+            || !username.validate_length(Some(2), Some(32), None)
         {
             return Err(create_error!(InvalidUsername));
         }

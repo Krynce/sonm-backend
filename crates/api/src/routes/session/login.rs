@@ -51,13 +51,12 @@ pub async fn login(
                 assert_safe(&password).await?;
 
                 // Check for account lockout
-                if let Some(lockout) = &account.lockout {
-                    if let Some(expiry) = lockout.expiry {
-                        if expiry > Timestamp::now_utc() {
-                            db.bump_lockout_count(&account.id).await?;
-                            return Err(create_error!(LockedOut));
-                        }
-                    }
+                if let Some(lockout) = &account.lockout
+                    && let Some(expiry) = lockout.expiry
+                    && expiry > Timestamp::now_utc()
+                {
+                    db.bump_lockout_count(&account.id).await?;
+                    return Err(create_error!(LockedOut));
                 }
 
                 // Verify the password is correct.
@@ -108,13 +107,12 @@ pub async fn login(
             let mut account = db.fetch_account(&ticket.account_id).await?;
 
             // Check for account lockout
-            if let Some(lockout) = &account.lockout {
-                if let Some(expiry) = lockout.expiry {
-                    if expiry > Timestamp::now_utc() {
-                        db.bump_lockout_count(&account.id).await?;
-                        return Err(create_error!(LockedOut));
-                    }
-                }
+            if let Some(lockout) = &account.lockout
+                && let Some(expiry) = lockout.expiry
+                && expiry > Timestamp::now_utc()
+            {
+                db.bump_lockout_count(&account.id).await?;
+                return Err(create_error!(LockedOut));
             }
 
             // Verify the MFA response

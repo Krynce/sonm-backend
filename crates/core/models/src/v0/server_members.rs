@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use super::{File, Role, User};
 
 use iso8601_timestamp::Timestamp;
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 #[cfg(feature = "validator")]
 use validator::Validate;
@@ -28,7 +28,7 @@ use rocket::FromForm;
 ///
 /// ^(?:VALUE|(repeating-)?(linear|conic|radial)-gradient\((VALUE|ADDITIONAL_VALUE)(COLOUR_SPACE)?STOP(,[ ]*(VALUE)STOP)+\))$
 /// ```
-pub static RE_COLOUR: Lazy<Regex> = Lazy::new(|| {
+pub static RE_COLOUR: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^(?:[a-z ]+|var\(--[a-z\d-]+\)|rgba?\([\d, ]+\)|#[a-f0-9]+|(repeating-)?(linear|conic|radial)-gradient\(([a-z ]+|var\(--[a-z\d-]+\)|rgba?\([\d, ]+\)|#[a-f0-9]+|\d+deg)([ ]+in[ ]+[a-z-]+([ ]+(shorter|longer|increasing|decreasing)[ ]+hue)?)?([ ]+(\d{1,3}%|0))?(,[ ]*([a-z ]+|var\(--[a-z\d-]+\)|rgba?\([\d, ]+\)|#[a-f0-9]+)([ ]+(\d{1,3}%|0))?)+\))$").unwrap()
 });
 

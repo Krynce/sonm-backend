@@ -244,7 +244,7 @@ auto_derived!(
         pub banner: Option<String>,
 
         /// Category structure for server
-        #[cfg_attr(feature = "validator", validate)]
+        #[cfg_attr(feature = "validator", validate(nested))]
         pub categories: Option<Vec<Category>>,
         /// System message configuration
         pub system_messages: Option<SystemMessageChannels>,
@@ -279,7 +279,7 @@ auto_derived!(
         /// Role colour
         #[cfg_attr(
             feature = "validator",
-            validate(length(min = 1, max = 128), regex = "RE_COLOUR")
+            validate(length(min = 1, max = 128), regex(path = "RE_COLOUR"))
         )]
         pub colour: Option<String>,
         /// Whether this role should be displayed separately

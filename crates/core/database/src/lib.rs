@@ -1,3 +1,8 @@
+// `#[async_trait]` and `#[async_recursion]` put `#[must_use]` on the boxed future they
+// generate, which is `#[must_use]` already. The lint fires inside their expansions, in code
+// we don't write, on every async trait method in this crate.
+#![allow(clippy::double_must_use)]
+
 #[macro_use]
 extern crate serde;
 

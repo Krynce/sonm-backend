@@ -3,6 +3,7 @@ name = "sonm-ratelimits"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+publish = false
 authors = ["Zomatree <me@zomatree.live>", "Paul Makles <me@insrt.uk>"]
 description = "Sonm: Ratelimit Handler"
 repository = "https://github.com/krynce/sonm-backend"

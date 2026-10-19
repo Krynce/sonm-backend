@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::RandomState};
+use std::{cmp::Reverse, collections::HashMap, hash::RandomState};
 
 use sonm_permissions::{
     ALLOW_IN_TIMEOUT, ChannelPermission, ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, Override,
@@ -29,9 +29,9 @@ impl<'z, 'x> BulkDatabasePermissionQuery<'x> {
     where
         'z: 'x,
     {
-        let member_perms = if self.cached_member_perms.is_some() {
-            // This isn't done as an if let to prevent borrow checker errors with the mut self call when the perms aren't cached.
-            let perms = self.cached_member_perms.as_ref().unwrap();
+        // Edition 2024 ends the `if let` temporary's borrow before the else block, so the
+        // `&mut self` call below is fine; on edition 2021 this had to be `is_some()` + `unwrap()`.
+        if let Some(perms) = self.cached_member_perms.as_ref() {
             perms
                 .iter()
                 .map(|(m, p)| {
@@ -52,8 +52,7 @@ impl<'z, 'x> BulkDatabasePermissionQuery<'x> {
                     )
                 })
                 .collect()
-        };
-        member_perms
+        }
     }
 }
 
@@ -299,7 +298,7 @@ async fn calculate_members_permissions<'a>(
             })
             .collect::<Vec<(i64, Override)>>();
 
-        server_roles.sort_by(|a, b| b.0.cmp(&a.0));
+        server_roles.sort_by_key(|(rank, _)| Reverse(*rank));
         for (_, role_override) in server_roles {
             permission.apply(role_override);
         }
@@ -316,7 +315,7 @@ async fn calculate_members_permissions<'a>(
             })
             .collect::<Vec<(i64, Override)>>();
 
-        roles.sort_by(|a, b| b.0.cmp(&a.0));
+        roles.sort_by_key(|(rank, _)| Reverse(*rank));
         let overrides = roles.into_iter().map(|(_, v)| v);
 
         for role_override in overrides {

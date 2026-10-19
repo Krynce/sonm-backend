@@ -10,7 +10,7 @@ pub async fn task(db: Database, _: sonm_database::AMQP) -> Result<()> {
         let success = db.remove_dangling_members().await;
         if let Err(s) = success {
             sonm_config::capture_error(&s);
-            warn!("Failed to prune dangling members: {:?}", &s);
+            warn!("Failed to prune dangling members: {:?}", s);
         }
 
         sleep(Duration::from_secs(90)).await;

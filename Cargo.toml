@@ -16,7 +16,12 @@ members = [
 redis23 = { package = "redis", version = "0.23.3", git = "https://github.com/revoltchat/redis-rs", rev = "523b2937367e17bd0073722bf6e23d06042cb4e4" }
 
 [profile.release]
-lto = "thin" # fat LTO of 7 binaries exhausts CI runner memory
+lto = "thin"          # fat LTO of 7 binaries exhausts CI runner memory
+codegen-units = 1     # the default 16 splits each crate up again and undoes most of thin LTO
+# `panic` stays at the default `unwind`: scheduler/src/main.rs relies on catch_unwind.
+# `strip` stays at the default `none` on purpose. A release build emits no debuginfo anyway,
+# so the only thing left to strip is the symbol table — and that is exactly what makes a
+# Sentry or panic backtrace name functions instead of printing hex addresses.
 
 [workspace.dependencies]
 # Async
@@ -24,7 +29,7 @@ async-trait = "0.1.89"
 tokio = "1.49.0"
 async-channel = "2.3.1"
 futures = "0.3.32"
-async-tungstenite = "0.17.0"
+async-tungstenite = "0.35.0"
 futures-locks = "0.7.1"
 async-lock = "2.8.0"
 async-recursion = "1.0.4"
@@ -33,12 +38,12 @@ tokio-util = { version = "0.7.18" }
 # Error Handling
 anyhow = "1.0.100"
 thiserror = "2.0.18"
-sentry = "0.31.5"
-sentry-anyhow = "0.38.1"
+sentry = "0.49.3"
+sentry-anyhow = "0.49.3"
 
 # Data Validation
 regex = "1.12.3"
-validator = "0.16"
+validator = "0.21.0"
 
 # Data Types
 uuid = "1.19.0"
@@ -52,23 +57,24 @@ chrono = "0.4.15"
 iso8601-timestamp = "0.2.10"
 
 # Data Collections
-lru = "0.16.3"
+lru = "0.19.0"
 indexmap = "2.13.1"
 moka = "0.12.8"
 lru_time_cache = "0.11.11"
 deadqueue = "0.2.4"
 
 # Web scraping
-scraper = "0.20.0"
+scraper = "0.27.0"
 encoding_rs = "0.8.34"
 
 # Mail
-lettre = "0.10.0-alpha.4"
+lettre = "0.11.23"
 handlebars = "4.3.0"
 
 # HTTP Requests
 reqwest = "0.13.2"
 isahc = "1.7"
+ipnet = "2.12.0"
 
 # Notifications
 web-push = "0.10.0"
@@ -77,13 +83,13 @@ web-push = "0.10.0"
 logos = "0.15"
 
 # SVG rendering
-usvg = "0.44.0"
-resvg = "0.44.0"
-tiny-skia = "0.11.4"
+usvg = "0.48.1"
+resvg = "0.48.1"
+tiny-skia = "0.12.0"
 
 # Logging
 log = "0.4.29"
-pretty_env_logger = "0.4.0"
+pretty_env_logger = "0.5.0"
 
 # Redis
 redis-kiss = { version = "0.1.4", default-features = false }
@@ -159,8 +165,7 @@ livekit-runtime = "0.4.0"
 
 # Other Utilities
 once_cell = "1.9.0"
-config = "0.13.3"
-cached = "0.44.0"
+config = "0.15.27"
 rand = "0.8.5"
 base64 = "0.21.3"
 decancer = "3.3.3"
@@ -180,9 +185,6 @@ rust-argon2 = "1.0.0"
 base32 = "0.4.0"
 sha1 = "0.10.6"
 futures-lite = "2.6.1"
-
-# Build Dependencies
-vergen = "7.5.0"
 
 # Local packages
 sonm-config = { version = "0.1.0", path = "crates/core/config" }

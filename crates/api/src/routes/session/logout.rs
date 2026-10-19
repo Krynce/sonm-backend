@@ -26,7 +26,7 @@ mod tests {
     async fn success() {
         let harness = TestHarness::new().await;
         let (_, session, _) = harness.new_user().await;
-        let mut pubsub = PubSubTestHelper::new(&format!("{}!", &session.user_id)).await;
+        let mut pubsub = PubSubTestHelper::new(&format!("{}!", session.user_id)).await;
 
         let res = harness
             .client

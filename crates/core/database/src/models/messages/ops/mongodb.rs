@@ -208,18 +208,18 @@ impl AbstractMessages for MongoDb {
     async fn append_message(&self, id: &str, append: &AppendMessage) -> Result<()> {
         let mut query = doc! {};
 
-        if let Some(embeds) = &append.embeds {
-            if !embeds.is_empty() {
-                query.insert(
-                    "$push",
-                    doc! {
-                        "embeds": {
-                            "$each": to_bson(embeds)
-                                .map_err(|_| create_database_error!("to_bson", "embeds"))?
-                        }
-                    },
-                );
-            }
+        if let Some(embeds) = &append.embeds
+            && !embeds.is_empty()
+        {
+            query.insert(
+                "$push",
+                doc! {
+                    "embeds": {
+                        "$each": to_bson(embeds)
+                            .map_err(|_| create_database_error!("to_bson", "embeds"))?
+                    }
+                },
+            );
         }
 
         if query.is_empty() {

@@ -27,10 +27,10 @@ impl<'a> RatelimitResolver<Request<'a>> for ApiRatelimits {
                 }
                 ("bots", _, _) => ("bots", None),
                 ("channels", Some(id), _) => {
-                    if request.method() == Method::Post {
-                        if let Some("messages") = extra {
-                            return ("messaging", Some(id));
-                        }
+                    if request.method() == Method::Post
+                        && let Some("messages") = extra
+                    {
+                        return ("messaging", Some(id));
                     }
 
                     ("channels", Some(id))

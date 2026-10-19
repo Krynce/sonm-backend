@@ -71,6 +71,3 @@ livekit-protocol = { workspace = true }
 
 [dev-dependencies]
 sonm-config = { workspace = true, features = ["test"] }
-
-[build-dependencies]
-vergen = { workspace = true }

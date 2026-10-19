@@ -10,7 +10,6 @@ use std::{
     collections::{HashMap, HashSet},
     time::Duration,
 };
-use validator::HasLen;
 
 use sonm_result::Result;
 
@@ -128,7 +127,7 @@ pub async fn handle_ack_event(
                     db.add_mention_to_unread(channel, user, &message_ids)
                         .await?;
                 }
-                info!("Added {} mentions for user {}", message_ids.len(), &user);
+                info!("Added {} mentions for user {}", message_ids.len(), user);
             }
 
             let mut mass_mentions = vec![];
@@ -141,7 +140,7 @@ pub async fn handle_ack_event(
                     debug!(
                         "Rejecting push: silenced: {}, recipient count: {}, push exists: {:?}",
                         *silenced,
-                        recipients.length(),
+                        recipients.len(),
                         push.is_some()
                     );
                     continue;
@@ -167,7 +166,7 @@ pub async fn handle_ack_event(
             if !mass_mentions.is_empty() {
                 debug!(
                     "Sending mass mention push event to AMQP; channel {}",
-                    &mass_mentions[0].message.channel
+                    mass_mentions[0].message.channel
                 );
 
                 let channel = db
@@ -258,7 +257,7 @@ pub async fn worker(db: Database, amqp: AMQP) {
                                 existing.push(new_event);
 
                                 // put a cap on the amount of messages that can be queued, for particularly active channels
-                                if (existing.length() as u16)
+                                if (existing.len() as u16)
                                     < sonm_config::config()
                                         .await
                                         .features

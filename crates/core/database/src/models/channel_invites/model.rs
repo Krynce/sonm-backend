@@ -111,20 +111,19 @@ impl Invite {
     pub async fn find(db: &Database, code: &str) -> Result<Invite> {
         if let Ok(invite) = db.fetch_invite(code).await {
             return Ok(invite);
-        } else if let Ok(server) = db.fetch_server(code).await {
-            if server.discoverable {
-                if let Some(channel) = server.channels.into_iter().next() {
-                    return Ok(Invite::Server {
-                        code: code.to_string(),
-                        server: server.id,
-                        creator: server.owner,
-                        channel,
-                        max_uses: None,
-                        uses: 0,
-                        expires: None,
-                    });
-                }
-            }
+        } else if let Ok(server) = db.fetch_server(code).await
+            && server.discoverable
+            && let Some(channel) = server.channels.into_iter().next()
+        {
+            return Ok(Invite::Server {
+                code: code.to_string(),
+                server: server.id,
+                creator: server.owner,
+                channel,
+                max_uses: None,
+                uses: 0,
+                expires: None,
+            });
         }
 
         Err(create_error!(NotFound))

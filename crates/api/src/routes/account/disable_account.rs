@@ -30,7 +30,7 @@ mod tests {
     async fn success() {
         let harness = TestHarness::new().await;
         let (account, session, _) = harness.new_user().await;
-        let mut pubsub = PubSubTestHelper::new(&format!("{}!", &account.id)).await;
+        let mut pubsub = PubSubTestHelper::new(&format!("{}!", account.id)).await;
 
         let ticket = MFATicket::new(account.id.to_string(), true);
         ticket.save(&harness.db).await.unwrap();

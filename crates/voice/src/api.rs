@@ -269,7 +269,7 @@ pub async fn ingress(
                         } else {
                             log::error!(
                                 "Broken State: Call started message ID ({}) does not contain a CallStarted system message.",
-                                &message.id
+                                message.id
                             )
                         }
                     };

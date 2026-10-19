@@ -61,8 +61,8 @@ pub async fn worker(db: Database) {
             )
             .await;
 
-            if let Ok(embeds) = embeds {
-                if let Err(err) = Message::append(
+            if let Ok(embeds) = embeds
+                && let Err(err) = Message::append(
                     &db,
                     task.id,
                     task.channel,
@@ -71,9 +71,8 @@ pub async fn worker(db: Database) {
                     },
                 )
                 .await
-                {
-                    error!("Encountered an error appending to message: {:?}", err);
-                }
+            {
+                error!("Encountered an error appending to message: {:?}", err);
             }
         });
     }
@@ -98,10 +97,10 @@ pub async fn generate(
         // Ignore quoted lines.
         .split('\n')
         .map(|v| {
-            if let Some(c) = v.chars().next() {
-                if c == '>' {
-                    return "";
-                }
+            if let Some(c) = v.chars().next()
+                && c == '>'
+            {
+                return "";
             }
 
             v

@@ -111,16 +111,16 @@ pub async fn edit(
     };
 
     // 1. Remove fields from object
-    if remove.contains(&v0::FieldsServer::Banner) {
-        if let Some(banner) = &server.banner {
-            db.mark_attachment_as_deleted(&banner.id).await?;
-        }
+    if remove.contains(&v0::FieldsServer::Banner)
+        && let Some(banner) = &server.banner
+    {
+        db.mark_attachment_as_deleted(&banner.id).await?;
     }
 
-    if remove.contains(&v0::FieldsServer::Icon) {
-        if let Some(icon) = &server.icon {
-            db.mark_attachment_as_deleted(&icon.id).await?;
-        }
+    if remove.contains(&v0::FieldsServer::Icon)
+        && let Some(icon) = &server.icon
+    {
+        db.mark_attachment_as_deleted(&icon.id).await?;
     }
 
     // 2. Validate changes

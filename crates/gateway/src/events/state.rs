@@ -50,7 +50,7 @@ pub struct Cache {
 impl Cache {
     fn with_events_size(user_id: Option<String>, seen_events_size: NonZeroUsize) -> Self {
         Self {
-            user_id: user_id.unwrap_or(String::default()),
+            user_id: user_id.unwrap_or_default(),
             seen_events: LruCache::new(seen_events_size),
             ..Default::default()
         }

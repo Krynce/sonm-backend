@@ -3,6 +3,7 @@ name = "sonm-presence"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
+publish = false
 authors = ["Paul Makles <me@insrt.uk>"]
 description = "Sonm: User Presence"
 repository = "https://github.com/krynce/sonm-backend"

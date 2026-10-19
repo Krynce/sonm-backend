@@ -1,2 +1,5 @@
 [profile.default]
-slow-timeout = { period = "5s", terminate-after = 10 }
+# Warn about a slow test every 30s but don't kill it before 5 minutes: the integration tests
+# talk to MongoDB, Redis and RabbitMQ in containers, and a cold container start alone eats
+# tens of seconds. The old 5s x 10 killed tests at 50s, which flaked in CI.
+slow-timeout = { period = "30s", terminate-after = 10 }

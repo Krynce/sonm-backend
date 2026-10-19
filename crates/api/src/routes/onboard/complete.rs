@@ -12,7 +12,7 @@ use crate::util::checks::validate;
 #[derive(Validate, Serialize, Deserialize, JsonSchema)]
 pub struct DataOnboard {
     /// New username which will be used to identify the user on the platform
-    #[validate(length(min = 2, max = 32), regex = "v0::RE_USERNAME")]
+    #[validate(length(min = 2, max = 32), regex(path = "v0::RE_USERNAME"))]
     username: String,
 }
 

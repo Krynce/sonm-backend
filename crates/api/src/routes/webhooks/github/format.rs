@@ -81,7 +81,7 @@ pub fn event_embed(event: Event) -> Option<SendableEmbed> {
                     "#### [{}] Branch {} was force-pushed to {}\n[compare changes]({})",
                     event.repository.full_name,
                     branch,
-                    &short_sha(&after),
+                    short_sha(&after),
                     compare
                 );
 
@@ -107,7 +107,7 @@ pub fn event_embed(event: Event) -> Option<SendableEmbed> {
                         .map(|commit| {
                             format!(
                                 "[`{}`]({}) {} - {}",
-                                &short_sha(&commit.id),
+                                short_sha(&commit.id),
                                 commit.url,
                                 shorten_single_line_text(&commit.message, 50),
                                 commit.author.name

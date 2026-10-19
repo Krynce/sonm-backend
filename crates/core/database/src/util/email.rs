@@ -220,18 +220,20 @@ pub fn send_email(
 }
 
 pub fn validate_email(email: &str) -> Result<()> {
+    use validator::ValidateEmail;
+
     // Make sure this is an actual email
-    if !validator::validate_email(email) {
+    if !email.validate_email() {
         return Err(create_error!(IncorrectData {
             with: "email".to_string()
         }));
     }
 
     // Check if the email is blacklisted
-    if let Some(domain) = email.split('@').next_back() {
-        if DISPOSABLE_EMAIL_DOMAINS.contains(&domain.to_string()) {
-            return Err(create_error!(Blacklisted));
-        }
+    if let Some(domain) = email.split('@').next_back()
+        && DISPOSABLE_EMAIL_DOMAINS.contains(&domain.to_string())
+    {
+        return Err(create_error!(Blacklisted));
     }
 
     Ok(())

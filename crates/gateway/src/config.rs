@@ -47,14 +47,14 @@ impl ProtocolConfiguration {
         match self.format {
             ProtocolFormat::Json => {
                 if let Message::Text(text) = msg {
-                    serde_json::from_str(text).map_err(|_| create_error!(InternalError))
+                    serde_json::from_str(text.as_str()).map_err(|_| create_error!(InternalError))
                 } else {
                     Err(create_error!(InternalError))
                 }
             }
             ProtocolFormat::Msgpack => {
                 if let Message::Binary(buf) = msg {
-                    rmp_serde::from_slice(buf).map_err(|_| create_error!(InternalError))
+                    rmp_serde::from_slice(buf.as_ref()).map_err(|_| create_error!(InternalError))
                 } else {
                     Err(create_error!(InternalError))
                 }
@@ -65,10 +65,12 @@ impl ProtocolConfiguration {
     /// Encode T: Serialize into a WebSocket message using the client's specified protocol format
     pub fn encode<T: Serialize>(&self, data: &T) -> Message {
         match self.format {
+            // `Message::Text`/`Message::Binary` now hold `Utf8Bytes`/`Bytes`; these
+            // constructors take what we already have.
             ProtocolFormat::Json => {
-                Message::Text(serde_json::to_string(data).expect("Failed to serialise (as json)."))
+                Message::text(serde_json::to_string(data).expect("Failed to serialise (as json)."))
             }
-            ProtocolFormat::Msgpack => Message::Binary(
+            ProtocolFormat::Msgpack => Message::binary(
                 rmp_serde::to_vec_named(data).expect("Failed to serialise (as msgpack)."),
             ),
         }
@@ -161,26 +163,26 @@ impl handshake::server::Callback for WebsocketHandshakeCallback {
                 "token" => session_token = Some(value.into()),
                 "ready" => {
                     // Re-enable all the fields the client specifies
-                    if let Some(captures) = READY_PAYLOAD_FIELD_REGEX.captures(value) {
-                        if let Some(field) = captures.get(0) {
-                            match field.as_str() {
-                                "users" => ready_payload_fields.users = true,
-                                "servers" => ready_payload_fields.servers = true,
-                                "channels" => ready_payload_fields.channels = true,
-                                "members" => ready_payload_fields.members = true,
-                                "emojis" => ready_payload_fields.emojis = true,
-                                "voice_states" => ready_payload_fields.voice_states = true,
-                                "channel_unreads" => ready_payload_fields.channel_unreads = true,
-                                "user_settings" => {
-                                    if let Some(subkey) = captures.get(1) {
-                                        ready_payload_fields
-                                            .user_settings
-                                            .push(subkey.as_str().to_string());
-                                    }
+                    if let Some(captures) = READY_PAYLOAD_FIELD_REGEX.captures(value)
+                        && let Some(field) = captures.get(0)
+                    {
+                        match field.as_str() {
+                            "users" => ready_payload_fields.users = true,
+                            "servers" => ready_payload_fields.servers = true,
+                            "channels" => ready_payload_fields.channels = true,
+                            "members" => ready_payload_fields.members = true,
+                            "emojis" => ready_payload_fields.emojis = true,
+                            "voice_states" => ready_payload_fields.voice_states = true,
+                            "channel_unreads" => ready_payload_fields.channel_unreads = true,
+                            "user_settings" => {
+                                if let Some(subkey) = captures.get(1) {
+                                    ready_payload_fields
+                                        .user_settings
+                                        .push(subkey.as_str().to_string());
                                 }
-                                "policy_changes" => ready_payload_fields.policy_changes = true,
-                                _ => {}
                             }
+                            "policy_changes" => ready_payload_fields.policy_changes = true,
+                            _ => {}
                         }
                     }
                 }

@@ -262,28 +262,28 @@ impl AbstractChannels for MongoDb {
             if let Some(sys) = &server.system_messages {
                 let mut unset = doc! {};
 
-                if let Some(cid) = &sys.user_joined {
-                    if &id == cid {
-                        unset.insert("system_messages.user_joined", 1_i32);
-                    }
+                if let Some(cid) = &sys.user_joined
+                    && &id == cid
+                {
+                    unset.insert("system_messages.user_joined", 1_i32);
                 }
 
-                if let Some(cid) = &sys.user_left {
-                    if &id == cid {
-                        unset.insert("system_messages.user_left", 1_i32);
-                    }
+                if let Some(cid) = &sys.user_left
+                    && &id == cid
+                {
+                    unset.insert("system_messages.user_left", 1_i32);
                 }
 
-                if let Some(cid) = &sys.user_kicked {
-                    if &id == cid {
-                        unset.insert("system_messages.user_kicked", 1_i32);
-                    }
+                if let Some(cid) = &sys.user_kicked
+                    && &id == cid
+                {
+                    unset.insert("system_messages.user_kicked", 1_i32);
                 }
 
-                if let Some(cid) = &sys.user_banned {
-                    if &id == cid {
-                        unset.insert("system_messages.user_banned", 1_i32);
-                    }
+                if let Some(cid) = &sys.user_banned
+                    && &id == cid
+                {
+                    unset.insert("system_messages.user_banned", 1_i32);
                 }
 
                 if !unset.is_empty() {

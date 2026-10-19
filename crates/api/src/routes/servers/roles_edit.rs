@@ -52,10 +52,10 @@ pub async fn edit(
             ..
         } = data;
 
-        if remove.contains(&v0::FieldsRole::Icon) {
-            if let Some(existing_icon) = &role.icon {
-                db.mark_attachment_as_deleted(&existing_icon.id).await?;
-            }
+        if remove.contains(&v0::FieldsRole::Icon)
+            && let Some(existing_icon) = &role.icon
+        {
+            db.mark_attachment_as_deleted(&existing_icon.id).await?;
         }
 
         let mut final_icon = None;

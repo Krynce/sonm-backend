@@ -106,7 +106,7 @@ impl TestHarness {
         _rank: i64,
         overrides: Option<OverrideField>,
     ) -> Role {
-        let mut role = Role::create(&self.db, &server, TestHarness::rand_string())
+        let mut role = Role::create(&self.db, server, TestHarness::rand_string())
             .await
             .expect("Failed to create test role");
 
@@ -208,7 +208,7 @@ impl TestHarness {
         for entry in results.into_iter().rev() {
             if entry.envelope.to[0].address == mailbox {
                 client
-                    .delete(format!("http://localhost:14080/delete/{}", &entry.id))
+                    .delete(format!("http://localhost:14080/delete/{}", entry.id))
                     .send()
                     .await
                     .unwrap();

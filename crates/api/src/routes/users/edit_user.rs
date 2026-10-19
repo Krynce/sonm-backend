@@ -57,18 +57,17 @@ pub async fn edit(
     }
 
     // 1. Remove fields from object
-    if data.remove.contains(&v0::FieldsUser::Avatar) {
-        if let Some(avatar) = &user.avatar {
-            db.mark_attachment_as_deleted(&avatar.id).await?;
-        }
+    if data.remove.contains(&v0::FieldsUser::Avatar)
+        && let Some(avatar) = &user.avatar
+    {
+        db.mark_attachment_as_deleted(&avatar.id).await?;
     }
 
-    if data.remove.contains(&v0::FieldsUser::ProfileBackground) {
-        if let Some(profile) = &user.profile {
-            if let Some(background) = &profile.background {
-                db.mark_attachment_as_deleted(&background.id).await?;
-            }
-        }
+    if data.remove.contains(&v0::FieldsUser::ProfileBackground)
+        && let Some(profile) = &user.profile
+        && let Some(background) = &profile.background
+    {
+        db.mark_attachment_as_deleted(&background.id).await?;
     }
 
     for field in &data.remove {

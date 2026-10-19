@@ -3,6 +3,7 @@ name = "sonm-result"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+publish = false
 authors = ["Paul Makles <me@insrt.uk>"]
 description = "Sonm: Result and Error types"
 repository = "https://github.com/krynce/sonm-backend"

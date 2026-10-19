@@ -16,7 +16,7 @@ pub static REGION_ID: Lazy<u16> = Lazy::new(|| {
         .unwrap()
 });
 
-pub static REGION_KEY: Lazy<String> = Lazy::new(|| format!("region{}", &*REGION_ID));
+pub static REGION_KEY: Lazy<String> = Lazy::new(|| format!("region{}", *REGION_ID));
 pub static ONLINE_SET: &str = "online";
 
 pub static FLAG_BITS: u32 = 0b1;
@@ -91,7 +91,7 @@ async fn delete_session_internal(user_id: &str, session_id: u32, skip_region: bo
 
         if is_empty {
             let _: Option<()> = conn.srem(ONLINE_SET, user_id).await.ok();
-            debug!("User ID {} just went offline.", &user_id);
+            debug!("User ID {} just went offline.", user_id);
         }
 
         is_empty
@@ -201,10 +201,10 @@ pub async fn clear_region(region_id: Option<&str>) {
         // also send out any relevant events.
         for session in sessions {
             let parts = session.split(':').collect::<Vec<&str>>();
-            if let (Some(user_id), Some(session_id)) = (parts.first(), parts.get(1)) {
-                if let Ok(session_id) = session_id.parse() {
-                    delete_session_internal(user_id, session_id, true).await;
-                }
+            if let (Some(user_id), Some(session_id)) = (parts.first(), parts.get(1))
+                && let Ok(session_id) = session_id.parse()
+            {
+                delete_session_internal(user_id, session_id, true).await;
             }
         }
 
@@ -241,7 +241,7 @@ mod tests {
         // Check if the user is online
         assert!(is_online(&user_id).await);
 
-        let user_ids = filter_online(&[user_id.to_string()]).await;
+        let user_ids = filter_online(std::slice::from_ref(&user_id)).await;
         assert_eq!(user_ids.len(), 1);
         assert!(user_ids.contains(&user_id));
 

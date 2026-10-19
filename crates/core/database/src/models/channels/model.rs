@@ -533,27 +533,25 @@ impl Channel {
                 }
                 _ => {}
             },
-            FieldsChannel::DefaultPermissions => match self {
-                Self::TextChannel {
+            FieldsChannel::DefaultPermissions => {
+                if let Self::TextChannel {
                     default_permissions,
                     ..
-                } => {
+                } = self
+                {
                     default_permissions.take();
                 }
-                _ => {}
-            },
-            FieldsChannel::Voice => match self {
-                Self::TextChannel { voice, .. } => {
+            }
+            FieldsChannel::Voice => {
+                if let Self::TextChannel { voice, .. } = self {
                     voice.take();
                 }
-                _ => {}
-            },
-            FieldsChannel::Slowmode => match self {
-                Self::TextChannel { slowmode, .. } => {
+            }
+            FieldsChannel::Slowmode => {
+                if let Self::TextChannel { slowmode, .. } = self {
                     slowmode.take();
                 }
-                _ => {}
-            },
+            }
         }
     }
 

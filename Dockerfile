@@ -1,5 +1,5 @@
 # Build Stage
-FROM --platform="${BUILDPLATFORM}" rust:1.92.0-slim-trixie
+FROM --platform="${BUILDPLATFORM}" rust:1.99.1-slim-trixie
 USER 0:0
 WORKDIR /home/rust/src
 
@@ -20,6 +20,9 @@ COPY scripts/build-image-layer.sh /tmp/
 RUN sh /tmp/build-image-layer.sh tools
 
 # Build all dependencies
+#
+# This list of manifests is the only place crates are enumerated: build-image-layer.sh derives
+# its stub list from whatever lands here, so a new crate needs one COPY line and nothing else.
 COPY Cargo.toml Cargo.lock ./
 COPY crates/api/Cargo.toml ./crates/api/
 COPY crates/gateway/Cargo.toml ./crates/gateway/

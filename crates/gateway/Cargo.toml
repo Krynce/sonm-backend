@@ -33,7 +33,7 @@ serde = { workspace = true }
 # async
 futures = { workspace = true }
 async-tungstenite = { workspace = true, features = ["tokio-runtime"] }
-tokio = { workspace = true, features = ["io-util", "sync"] }
+tokio = { workspace = true, features = ["io-util", "sync", "time"] }
 tokio-util = { workspace = true, features = ["compat"] }
 
 # core

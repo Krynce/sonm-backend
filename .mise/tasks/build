@@ -2,4 +2,4 @@
 #MISE description="Build project"
 set -e
 
-${BUILDER} build "$@"
+${BUILDER} build --locked "$@"

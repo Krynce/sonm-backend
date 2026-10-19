@@ -33,6 +33,23 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
+      # Without this every run rebuilds the whole dependency tree from scratch.
+      - uses: Swatinem/rust-cache@v2
+
+      # Cheapest check first, so a formatting slip doesn't wait on a full build.
+      - run: cargo fmt --all --check
+      - run: mise check
       - run: mise build
       - run: mise docker:start
       - run: mise test
+
+  deny:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Reads deny.toml; needs neither a toolchain nor dav1d, so it runs beside the build.
+      - uses: EmbarkStudios/cargo-deny-action@v2

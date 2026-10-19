@@ -108,10 +108,11 @@ pub async fn call(
 
     log::debug!("Created room {}", room.name);
 
-    if let Some(recipients) = recipients {
-        if room.num_participants == 0 && !recipients.is_empty() {
-            set_call_notification_recipients(channel.id(), &user.id, &recipients).await?;
-        }
+    if let Some(recipients) = recipients
+        && room.num_participants == 0
+        && !recipients.is_empty()
+    {
+        set_call_notification_recipients(channel.id(), &user.id, &recipients).await?;
     }
 
     Ok(Json(v0::CreateVoiceUserResponse {

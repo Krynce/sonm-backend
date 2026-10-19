@@ -257,16 +257,15 @@ async fn upload_file(
                 // Reject decompression bombs *before* anything decodes the pixels: the
                 // dimensions come out of the image header, so a 200 MP PNG that fits well
                 // inside the byte limit is caught here rather than in the decoder.
-                if let Some((width, height)) = sonm_storage::image_size(&contents) {
-                    if width < limit.min_resolution[0]
+                if let Some((width, height)) = sonm_storage::image_size(&contents)
+                    && (width < limit.min_resolution[0]
                         || height < limit.min_resolution[1]
                         || width > limit.max_pixel_side
                         || height > limit.max_pixel_side
                         || width.saturating_mul(height)
-                            > limit.max_mega_pixels.saturating_mul(1_000_000)
-                    {
-                        return Err(create_error!(ImageProcessingFailed));
-                    }
+                            > limit.max_mega_pixels.saturating_mul(1_000_000))
+                {
+                    return Err(create_error!(ImageProcessingFailed));
                 }
 
                 let metadata = generate_metadata(&contents, mime_type);

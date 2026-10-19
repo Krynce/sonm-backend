@@ -27,14 +27,15 @@ const POLICY_CHANGES_TTL: Duration = Duration::from_secs(300);
 /// connection. Cache the result in-process.
 // ponytail: on expiry several concurrent connections may refetch at once; it is one query,
 // single-flight only if that ever shows up in profiling.
-static POLICY_CHANGES: Lazy<tokio::sync::RwLock<Option<(Instant, Arc<Vec<PolicyChange>>)>>> =
-    Lazy::new(|| tokio::sync::RwLock::new(None));
+type CachedPolicyChanges = tokio::sync::RwLock<Option<(Instant, Arc<Vec<PolicyChange>>)>>;
+
+static POLICY_CHANGES: Lazy<CachedPolicyChanges> = Lazy::new(|| tokio::sync::RwLock::new(None));
 
 async fn cached_policy_changes(db: &Database) -> Result<Arc<Vec<PolicyChange>>> {
-    if let Some((fetched_at, changes)) = &*POLICY_CHANGES.read().await {
-        if fetched_at.elapsed() < POLICY_CHANGES_TTL {
-            return Ok(changes.clone());
-        }
+    if let Some((fetched_at, changes)) = &*POLICY_CHANGES.read().await
+        && fetched_at.elapsed() < POLICY_CHANGES_TTL
+    {
+        return Ok(changes.clone());
     }
 
     let changes = Arc::new(db.fetch_policy_changes().await?);
@@ -102,10 +103,10 @@ impl Cache {
                     for channel in self.channels.values() {
                         match channel {
                             Channel::DirectMessage { recipients, .. }
-                            | Channel::Group { recipients, .. } => {
-                                if recipients.contains(user_id) {
-                                    return true;
-                                }
+                            | Channel::Group { recipients, .. }
+                                if recipients.contains(user_id) =>
+                            {
+                                return true;
                             }
                             _ => {}
                         }
@@ -406,19 +407,18 @@ impl State {
                 .cloned()
                 .collect::<Vec<String>>();
 
-            if !unknowns.is_empty() {
-                if let Ok(channels) = db.fetch_channels(&unknowns).await {
-                    let viewable_channels =
-                        self.cache.filter_accessible_channels(db, channels).await;
+            if !unknowns.is_empty()
+                && let Ok(channels) = db.fetch_channels(&unknowns).await
+            {
+                let viewable_channels = self.cache.filter_accessible_channels(db, channels).await;
 
-                    for channel in viewable_channels {
-                        self.cache
-                            .channels
-                            .insert(channel.id().to_string(), channel.clone());
+                for channel in viewable_channels {
+                    self.cache
+                        .channels
+                        .insert(channel.id().to_string(), channel.clone());
 
-                        self.insert_subscription(channel.id().to_string()).await;
-                        bulk_events.push(EventV1::ChannelCreate(channel.into()));
-                    }
+                    self.insert_subscription(channel.id().to_string()).await;
+                    bulk_events.push(EventV1::ChannelCreate(channel.into()));
                 }
             }
 
@@ -514,10 +514,10 @@ impl State {
                     channel.apply_options(data.clone().into());
                 }
 
-                if !self.cache.channels.contains_key(id) {
-                    if let Ok(channel) = db.fetch_channel(id).await {
-                        self.cache.channels.insert(id.clone(), channel);
-                    }
+                if !self.cache.channels.contains_key(id)
+                    && let Ok(channel) = db.fetch_channel(id).await
+                {
+                    self.cache.channels.insert(id.clone(), channel);
                 }
 
                 if let Some(channel) = self.cache.channels.get(id) {
@@ -644,22 +644,21 @@ impl State {
                 clear,
                 ..
             } => {
-                if let Some(server) = self.cache.servers.get_mut(id) {
-                    if let Some(role) = server.roles.get_mut(role_id) {
-                        for field in &clear.clone() {
-                            role.remove_field(&field.clone().into());
-                        }
-
-                        role.apply_options(data.clone().into());
+                if let Some(server) = self.cache.servers.get_mut(id)
+                    && let Some(role) = server.roles.get_mut(role_id)
+                {
+                    for field in &clear.clone() {
+                        role.remove_field(&field.clone().into());
                     }
+
+                    role.apply_options(data.clone().into());
                 }
 
-                if data.rank.is_some() || data.permissions.is_some() {
-                    if let Some(member) = self.cache.members.get(id) {
-                        if member.roles.contains(role_id) {
-                            queue_server = Some(id.clone());
-                        }
-                    }
+                if (data.rank.is_some() || data.permissions.is_some())
+                    && let Some(member) = self.cache.members.get(id)
+                    && member.roles.contains(role_id)
+                {
+                    queue_server = Some(id.clone());
                 }
             }
             EventV1::ServerRoleDelete { id, role_id } => {
@@ -667,10 +666,10 @@ impl State {
                     server.roles.remove(role_id);
                 }
 
-                if let Some(member) = self.cache.members.get(id) {
-                    if member.roles.contains(role_id) {
-                        queue_server = Some(id.clone());
-                    }
+                if let Some(member) = self.cache.members.get(id)
+                    && member.roles.contains(role_id)
+                {
+                    queue_server = Some(id.clone());
                 }
             }
 

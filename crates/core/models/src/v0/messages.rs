@@ -154,7 +154,7 @@ auto_derived!(
         ///
         /// Must have `ManageRole` permission to use
         #[serde(skip_serializing_if = "Option::is_none")]
-        #[validate(length(min = 1, max = 128), regex = "RE_COLOUR")]
+        #[validate(length(min = 1, max = 128), regex(path = "RE_COLOUR"))]
         pub colour: Option<String>,
     }
 
@@ -234,7 +234,7 @@ auto_derived!(
         pub media: Option<String>,
         #[cfg_attr(
             feature = "validator",
-            validate(length(min = 1, max = 128), regex = "RE_COLOUR")
+            validate(length(min = 1, max = 128), regex(path = "RE_COLOUR"))
         )]
         pub colour: Option<String>,
     }
@@ -270,10 +270,10 @@ auto_derived!(
         /// Embeds to include in message
         ///
         /// Text embed content contributes to the content length cap
-        #[cfg_attr(feature = "validator", validate)]
+        #[cfg_attr(feature = "validator", validate(nested))]
         pub embeds: Option<Vec<SendableEmbed>>,
         /// Masquerade to apply to this message
-        #[cfg_attr(feature = "validator", validate)]
+        #[cfg_attr(feature = "validator", validate(nested))]
         pub masquerade: Option<Masquerade>,
         /// Information about how this message should be interacted with
         pub interactions: Option<Interactions>,

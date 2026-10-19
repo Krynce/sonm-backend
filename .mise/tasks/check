@@ -2,4 +2,4 @@
 #MISE description="Check project with clippy"
 set -e
 
-cargo clippy
+cargo clippy --locked --workspace --all-targets "$@" -- -D warnings

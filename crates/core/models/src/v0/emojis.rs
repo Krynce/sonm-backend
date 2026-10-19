@@ -1,5 +1,5 @@
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 #[cfg(feature = "validator")]
 use validator::Validate;
@@ -7,7 +7,7 @@ use validator::Validate;
 /// Regex for valid emoji names
 ///
 /// Alphanumeric and underscores
-pub static RE_EMOJI: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9_]+$").unwrap());
+pub static RE_EMOJI: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-z0-9_]+$").unwrap());
 
 auto_derived!(
     /// Emoji
@@ -46,7 +46,7 @@ auto_derived!(
     #[cfg_attr(feature = "validator", derive(Validate))]
     pub struct DataCreateEmoji {
         /// Server name
-        #[validate(length(min = 1, max = 32), regex = "RE_EMOJI")]
+        #[validate(length(min = 1, max = 32), regex(path = "RE_EMOJI"))]
         pub name: String,
         /// Parent information
         pub parent: EmojiParent,
@@ -68,7 +68,7 @@ auto_derived!(
         /// Emoji name
         #[cfg_attr(
             feature = "validator",
-            validate(length(min = 1, max = 32), regex = "RE_EMOJI")
+            validate(length(min = 1, max = 32), regex(path = "RE_EMOJI"))
         )]
         pub name: Option<String>,
     }

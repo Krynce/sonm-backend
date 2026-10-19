@@ -27,7 +27,7 @@ tokio = { workspace = true, features = ["sync", "rt-multi-thread"] }
 
 # Web requests
 reqwest = { workspace = true, features = ["json"] }
-pdk-ip-filter-lib = "1.8.0"
+ipnet = { workspace = true }
 url = { workspace = true }
 
 # Logging

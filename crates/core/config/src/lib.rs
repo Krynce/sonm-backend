@@ -1,8 +1,12 @@
 #[cfg(feature = "test")]
 use std::sync::OnceLock;
-use std::{collections::HashMap, path::Path, sync::LazyLock};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::LazyLock,
+    time::{Duration, Instant},
+};
 
-use cached::proc_macro::cached;
 use config::{Config, Environment, File, FileFormat};
 use futures_locks::RwLock;
 use serde::Deserialize;
@@ -492,14 +496,40 @@ pub async fn config_no_cache() -> Settings {
     config
 }
 
-#[cached(time = 30)]
+/// How long a deserialised [`Settings`] stays usable before it is read again
+const CONFIG_TTL: Duration = Duration::from_secs(30);
+
+static CONFIG_CACHE: LazyLock<RwLock<Option<(Instant, Settings)>>> =
+    LazyLock::new(|| RwLock::new(None));
+
+/// Current settings
+///
+/// Called on essentially every request, so the deserialise is cached for [`CONFIG_TTL`] and
+/// callers get a clone. This used to be `#[cached(ttl_secs = 30)]`; the `cached` crate was
+/// pulled in for this one attribute and brought the unmaintained `instant` with it.
+// ponytail: on expiry several callers can reload at once. It is a deserialise of an in-memory
+// builder, so single-flight only if that ever shows up in profiling.
 pub async fn config() -> Settings {
     #[cfg(feature = "test")]
     if let Some(overwrites) = CONFIG_OVERWRITES.get() {
         return overwrites.clone();
     }
 
-    config_no_cache().await
+    {
+        // Scoped so the read guard is gone before the write below, whatever the edition's
+        // temporary rules happen to be.
+        let cached = CONFIG_CACHE.read().await;
+        if let Some((loaded_at, settings)) = &*cached
+            && loaded_at.elapsed() < CONFIG_TTL
+        {
+            return settings.clone();
+        }
+    }
+
+    let settings = config_no_cache().await;
+    *CONFIG_CACHE.write().await = Some((Instant::now(), settings.clone()));
+
+    settings
 }
 
 #[cfg(feature = "test")]
@@ -541,13 +571,12 @@ pub async fn setup_logging(release: &'static str, dsn: String) -> Option<sentry:
     if dsn.is_empty() {
         None
     } else {
-        Some(sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                release: Some(release.into()),
-                ..Default::default()
-            },
-        )))
+        // `ClientOptions` is `#[non_exhaustive]`, so it has to be built and then adjusted
+        // rather than written as a struct literal.
+        let mut options = sentry::ClientOptions::default();
+        options.release = Some(release.into());
+
+        Some(sentry::init((dsn, options)))
     }
 }
 
@@ -567,10 +596,24 @@ macro_rules! configure {
 #[cfg(feature = "test")]
 #[cfg(test)]
 mod tests {
-    use crate::init;
+    use crate::{CONFIG_CACHE, config, init};
 
     #[tokio::test]
     async fn it_works() {
         init().await;
+    }
+
+    /// `config()` is called on every request and hands out a cached clone; a broken cache
+    /// would hand out default or empty settings instead.
+    #[tokio::test]
+    async fn config_is_cached_and_still_correct() {
+        init().await;
+
+        let first = config().await;
+        assert!(CONFIG_CACHE.read().await.is_some(), "nothing was cached");
+
+        let second = config().await;
+        assert_eq!(first.database.redis, second.database.redis);
+        assert!(!second.database.redis.is_empty());
     }
 }

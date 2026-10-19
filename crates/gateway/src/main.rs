@@ -1,7 +1,4 @@
-use std::{
-    env,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::{env, sync::atomic::Ordering};
 
 use sonm_database::AMQP;
 use sonm_presence::clear_region;
@@ -14,10 +11,8 @@ pub mod config;
 pub mod events;
 
 mod database;
+mod metrics;
 mod websocket;
-
-/// Currently connected WebSocket clients
-static CONNECTIONS: AtomicUsize = AtomicUsize::new(0);
 
 /// Answer any request with 200 and the connection count
 ///
@@ -25,7 +20,7 @@ static CONNECTIONS: AtomicUsize = AtomicUsize::new(0);
 /// port instead; a hand-written response avoids pulling an HTTP framework in for one route.
 async fn serve_health(listener: TcpListener) {
     while let Ok((mut stream, _)) = listener.accept().await {
-        let body = format!("{}\n", CONNECTIONS.load(Ordering::Relaxed));
+        let body = format!("{}\n", metrics::CONNECTIONS.load(Ordering::Relaxed));
         let response = format!(
             "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
             body.len()
@@ -69,13 +64,17 @@ async fn main() {
         Err(error) => error!("Failed to bind health endpoint on {health_bind}: {error:?}"),
     }
 
+    // Summarise the counters periodically; this is the gateway's only observability.
+    tokio::spawn(metrics::report_forever());
+
     // Start accepting new connections and spawn a client for each connection.
     while let Ok((stream, addr)) = listener.accept().await {
         tokio::task::spawn(async move {
             info!("User connected from {addr:?}");
-            CONNECTIONS.fetch_add(1, Ordering::Relaxed);
+            metrics::CONNECTIONS.fetch_add(1, Ordering::Relaxed);
+            metrics::ACCEPTED.fetch_add(1, Ordering::Relaxed);
             websocket::client(database::get_db(), stream, addr).await;
-            CONNECTIONS.fetch_sub(1, Ordering::Relaxed);
+            metrics::CONNECTIONS.fetch_sub(1, Ordering::Relaxed);
             info!("User disconnected from {addr:?}");
         });
     }

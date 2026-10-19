@@ -1,7 +1,7 @@
 use encoding_rs::{Encoding, UTF_8_INIT};
+use ipnet::IpNet;
 use lazy_static::lazy_static;
 use mime::Mime;
-use pdk_ip_filter_lib::IpFilter;
 use regex::Regex;
 use reqwest::{
     Client, Response,
@@ -60,7 +60,11 @@ lazy_static! {
         .time_to_idle(Duration::from_secs(30))
         .build();
 
-    static ref IP_BLOCKLIST: IpFilter = IpFilter::block(&[
+    /// Address ranges a link preview must never be fetched from
+    ///
+    // ponytail: a linear scan over 15 networks per resolved address, which is nothing next to
+    // the DNS lookup it follows; a trie only pays off if this list grows by orders of magnitude.
+    static ref IP_BLOCKLIST: Vec<IpNet> = [
         "0.0.0.0/8",
         "10.0.0.0/8",
         "192.168.0.0/16",
@@ -71,22 +75,27 @@ lazy_static! {
         "192.0.0.0/24",     // IETF protocol assignments
         "198.18.0.0/15",    // benchmarking
         "224.0.0.0/4",      // multicast
-        "::1",
-        "::",
+        "::1/128",
+        "::/128",
         "fc00::/7",         // unique local, covers fc00::/10 and fd00::/8
         "fe80::/10",        // link-local
         "ff00::/8",         // multicast
         ]
-    ).unwrap();
+    .iter()
+    .map(|net| net.parse().expect("blocklist entry is not a valid network"))
+    .collect();
 }
 
 /// Check a resolved address against [`IP_BLOCKLIST`]
 ///
-/// IPv4-mapped IPv6 addresses are rejected outright: the filter would not match them against the
-/// IPv4 ranges above.
+/// IPv4-mapped IPv6 addresses are rejected outright: they would not match the IPv4 ranges above,
+/// and nothing legitimate asks us to fetch one.
 fn ip_is_allowed(ip: &IpAddr) -> bool {
-    let string = ip.to_string();
-    !string.contains("::ffff:") && IP_BLOCKLIST.is_allowed(&string)
+    if matches!(ip, IpAddr::V6(v6) if v6.to_ipv4_mapped().is_some()) {
+        return false;
+    }
+
+    !IP_BLOCKLIST.iter().any(|net| net.contains(ip))
 }
 
 /// Maximum size of a response body this service will pull into memory
@@ -124,16 +133,19 @@ async fn read_body(mut response: Response) -> Result<Vec<u8>> {
     Ok(body)
 }
 
-static PROXY_CACHE: tokio::sync::OnceCell<moka::future::Cache<String, Result<(String, Vec<u8>)>>> =
+/// Proxied response: content type and body, or the error we got instead
+type ProxyEntry = Result<(String, Vec<u8>)>;
+
+static PROXY_CACHE: tokio::sync::OnceCell<moka::future::Cache<String, ProxyEntry>> =
     tokio::sync::OnceCell::const_new();
 
 /// Cache for proxy results
-async fn proxy_cache() -> &'static moka::future::Cache<String, Result<(String, Vec<u8>)>> {
+async fn proxy_cache() -> &'static moka::future::Cache<String, ProxyEntry> {
     PROXY_CACHE
         .get_or_init(|| async {
             moka::future::Cache::builder()
-                .weigher(|_key, value: &Result<(String, Vec<u8>)>| -> u32 {
-                    std::mem::size_of::<Result<(String, Vec<u8>)>>() as u32
+                .weigher(|_key, value: &ProxyEntry| -> u32 {
+                    std::mem::size_of::<ProxyEntry>() as u32
                         + if let Ok((url, vec)) = value {
                             url.len().try_into().unwrap_or(u32::MAX)
                                 + vec.len().try_into().unwrap_or(u32::MAX)
@@ -347,10 +359,10 @@ impl Request {
         }
 
         // Re-map Youtube Shorts to regular Youtube links
-        if let Some(captures) = RE_URL_YOUTUBE_SHORTS.captures(&url) {
-            if let Some(video_id) = captures.get(1) {
-                url = format!("https://youtube.com/watch?v={}", video_id.as_str());
-            }
+        if let Some(captures) = RE_URL_YOUTUBE_SHORTS.captures(&url)
+            && let Some(video_id) = captures.get(1)
+        {
+            url = format!("https://youtube.com/watch?v={}", video_id.as_str());
         }
 
         // Generate the actual embed

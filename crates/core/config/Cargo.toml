@@ -3,6 +3,7 @@ name = "sonm-config"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+publish = false
 authors = ["Paul Makles <me@insrt.uk>"]
 description = "Sonm: Configuration"
 repository = "https://github.com/krynce/sonm-backend"
@@ -19,7 +20,6 @@ default = ["sentry"]
 [dependencies]
 # Utility
 config = { workspace = true }
-cached = { workspace = true }
 
 # Serde
 serde = { workspace = true }
@@ -38,3 +38,8 @@ sentry-anyhow = { workspace = true, optional = true }
 
 # Core
 sonm-result = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Without these the crate's own `#[tokio::test]`s only compile as part of the workspace,
+# where feature unification happens to supply them.
+tokio = { workspace = true, features = ["macros", "rt"] }

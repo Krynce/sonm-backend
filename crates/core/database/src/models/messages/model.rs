@@ -337,17 +337,17 @@ impl Message {
         };
 
         // Ensure restrict_reactions is not specified without reactions list
-        if let Some(interactions) = &data.interactions {
-            if interactions.restrict_reactions {
-                let disallowed = if let Some(list) = &interactions.reactions {
-                    list.is_empty()
-                } else {
-                    true
-                };
+        if let Some(interactions) = &data.interactions
+            && interactions.restrict_reactions
+        {
+            let disallowed = if let Some(list) = &interactions.reactions {
+                list.is_empty()
+            } else {
+                true
+            };
 
-                if disallowed {
-                    return Err(create_error!(InvalidProperty));
-                }
+            if disallowed {
+                return Err(create_error!(InvalidProperty));
             }
         }
 
@@ -393,9 +393,12 @@ impl Message {
             ..
         } = message_mentions;
 
-        if allow_mass_mentions && server_id.is_some() && !role_mentions.is_empty() {
+        if allow_mass_mentions
+            && let Some(server_id) = server_id.as_ref()
+            && !role_mentions.is_empty()
+        {
             let server_data = db
-                .fetch_server(server_id.as_ref().unwrap().as_str())
+                .fetch_server(server_id.as_str())
                 .await
                 .expect("Failed to fetch server");
 
@@ -412,7 +415,7 @@ impl Message {
         } else if mentions_everyone || mentions_online || !role_mentions.is_empty() {
             debug!(
                 "Mentioned everyone: {}, mentioned online: {}, mentioned roles: {:?}",
-                mentions_everyone, mentions_online, &role_mentions
+                mentions_everyone, mentions_online, role_mentions
             );
             if let Some(user) = match author {
                 MessageAuthor::User(user) => Some(Ok(user)),
@@ -536,21 +539,18 @@ impl Message {
         }
 
         // Validate external emoji usage
-        if !emojis.is_empty() {
-            if let Some(server_id) = &server_id {
-                let emoji_ids: Vec<String> = emojis.iter().cloned().collect();
-                if Message::any_foreign_emoji(db, server_id, &emoji_ids).await? {
-                    if let MessageAuthor::User(user) = author {
-                        let owned_user: User = user.clone().into();
-                        let mut query =
-                            DatabasePermissionQuery::new(db, &owned_user).channel(&channel);
-                        calculate_channel_permissions(&mut query)
-                            .await
-                            .throw_if_lacking_channel_permission(
-                                ChannelPermission::UseExternalEmojis,
-                            )?;
-                    }
-                }
+        if !emojis.is_empty()
+            && let Some(server_id) = &server_id
+        {
+            let emoji_ids: Vec<String> = emojis.iter().cloned().collect();
+            if Message::any_foreign_emoji(db, server_id, &emoji_ids).await?
+                && let MessageAuthor::User(user) = author
+            {
+                let owned_user: User = user.clone().into();
+                let mut query = DatabasePermissionQuery::new(db, &owned_user).channel(&channel);
+                calculate_channel_permissions(&mut query)
+                    .await
+                    .throw_if_lacking_channel_permission(ChannelPermission::UseExternalEmojis)?;
             }
         }
 
@@ -654,34 +654,30 @@ impl Message {
 
         // Add mentions for affected users
         #[cfg(feature = "tasks")]
-        if !mentions_elsewhere {
-            if let Some(mentions) = &self.mentions {
-                tasks::ack::queue_message(
-                    self.channel.to_string(),
-                    AckEvent::ProcessMessage {
-                        messages: vec![(
-                            None,
-                            self.clone(),
-                            mentions.clone(),
-                            self.has_suppressed_notifications(),
-                        )],
-                    },
-                )
-                .await;
-            }
+        if !mentions_elsewhere && let Some(mentions) = &self.mentions {
+            tasks::ack::queue_message(
+                self.channel.to_string(),
+                AckEvent::ProcessMessage {
+                    messages: vec![(
+                        None,
+                        self.clone(),
+                        mentions.clone(),
+                        self.has_suppressed_notifications(),
+                    )],
+                },
+            )
+            .await;
         }
 
         // Generate embeds
         #[cfg(feature = "tasks")]
-        if generate_embeds {
-            if let Some(content) = &self.content {
-                tasks::process_embeds::queue(
-                    self.channel.to_string(),
-                    self.id.to_string(),
-                    content.clone(),
-                )
-                .await;
-            }
+        if generate_embeds && let Some(content) = &self.content {
+            tasks::process_embeds::queue(
+                self.channel.to_string(),
+                self.id.to_string(),
+                content.clone(),
+            )
+            .await;
         }
 
         Ok(())
@@ -1007,14 +1003,12 @@ impl Message {
                 .as_ref()
                 .and_then(|channel| channel.server().map(str::to_string));
 
-            if let Some(server_id) = server_id {
-                if Message::any_foreign_emoji(db, &server_id, &[emoji.to_string()]).await? {
-                    calculate_channel_permissions(query)
-                        .await
-                        .throw_if_lacking_channel_permission(
-                            ChannelPermission::UseExternalEmojis,
-                        )?;
-                }
+            if let Some(server_id) = server_id
+                && Message::any_foreign_emoji(db, &server_id, &[emoji.to_string()]).await?
+            {
+                calculate_channel_permissions(query)
+                    .await
+                    .throw_if_lacking_channel_permission(ChannelPermission::UseExternalEmojis)?;
             }
         }
 
@@ -1081,26 +1075,23 @@ impl Message {
                 }
                 | Channel::TextChannel {
                     last_message_id, ..
-                } => {
-                    if last_message_id.is_some() && last_message_id.as_ref().unwrap() == &self.id {
-                        let new_last_message_id =
-                            db.fetch_last_message(channel.id()).await.unwrap();
+                } if last_message_id.is_some() && last_message_id.as_ref().unwrap() == &self.id => {
+                    let new_last_message_id = db.fetch_last_message(channel.id()).await.unwrap();
 
-                        db.update_last_messsage_id(channel.id(), new_last_message_id.as_deref())
-                            .await?;
+                    db.update_last_messsage_id(channel.id(), new_last_message_id.as_deref())
+                        .await?;
 
-                        if new_last_message_id.is_some() {
-                            EventV1::ChannelUpdate {
-                                id: channel.id().to_string(),
-                                data: sonm_models::v0::PartialChannel {
-                                    last_message_id: new_last_message_id,
-                                    ..Default::default()
-                                },
-                                clear: vec![],
-                            }
-                            .p(channel.id().to_string())
-                            .await;
+                    if new_last_message_id.is_some() {
+                        EventV1::ChannelUpdate {
+                            id: channel.id().to_string(),
+                            data: sonm_models::v0::PartialChannel {
+                                last_message_id: new_last_message_id,
+                                ..Default::default()
+                            },
+                            clear: vec![],
                         }
+                        .p(channel.id().to_string())
+                        .await;
                     }
                 }
                 _ => (),

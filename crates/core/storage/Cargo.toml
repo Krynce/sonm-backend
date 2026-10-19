@@ -3,6 +3,7 @@ name = "sonm-storage"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
+publish = false
 authors = ["Paul Makles <me@insrt.uk>"]
 description = "Sonm: S3 and encryption subroutines"
 repository = "https://github.com/krynce/sonm-backend"
@@ -24,7 +25,17 @@ aes-gcm = { workspace = true }
 typenum = { workspace = true }
 
 aws-config = { workspace = true }
-aws-sdk-s3 = { workspace = true, features = ["behavior-version-latest"] }
+# The default feature set includes "rustls", which is the *legacy* connector: it pulls
+# hyper 0.14, h2 0.3, rustls 0.21 and rustls-webpki 0.101 into the build, each with open
+# RUSTSEC advisories and no path to a fix. This is aws-sdk-s3's default set with that one
+# feature dropped; "default-https-client" is the modern connector and stays.
+aws-sdk-s3 = { workspace = true, default-features = false, features = [
+    "behavior-version-latest",
+    "default-https-client",
+    "http-1x",
+    "rt-tokio",
+    "sigv4a",
+] }
 
 sonm-config = { workspace = true, features = ["report-macros"] }
 sonm-result = { workspace = true }

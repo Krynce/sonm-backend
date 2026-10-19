@@ -12,11 +12,9 @@ disallowed-methods = [
     "sonm_database::models::channel_webhooks::ops::AbstractWebhooks::insert_webhook",
     "sonm_database::models::channels::ops::AbstractChannels::insert_channel",
     "sonm_database::models::emojis::ops::AbstractEmojis::insert_emoji",
-    "sonm_database::models::files::ops::AbstractAttachments::insert_attachment",
     "sonm_database::models::messages::ops::AbstractMessages::insert_message",
     "sonm_database::models::ratelimit_events::ops::AbstractRatelimitEvents::insert_ratelimit_event",
     "sonm_database::models::server_bans::ops::AbstractServerBans::insert_ban",
-    "sonm_database::models::server_members::ops::AbstractServerMembers::insert_member",
     "sonm_database::models::servers::ops::AbstractServers::insert_server",
     "sonm_database::models::users::ops::AbstractUsers::insert_user",
 

@@ -49,12 +49,10 @@ pub async fn send_password_reset(
     if let Ok(Some(mut account)) = db
         .fetch_account_by_normalised_email(&email_normalised)
         .await
+        && !matches!(account.verification, EmailVerification::Pending { .. })
+        && let Err(e) = account.start_password_reset(db, false).await
     {
-        if !matches!(account.verification, EmailVerification::Pending { .. }) {
-            if let Err(e) = account.start_password_reset(db, false).await {
-                sonm_config::capture_error(&e);
-            }
-        }
+        sonm_config::capture_error(&e);
     }
 
     // Never fail this route, (except for db error)

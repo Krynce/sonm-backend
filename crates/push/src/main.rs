@@ -1,3 +1,7 @@
+// See the same allow in sonm-database: `#[async_trait]` marks its generated future
+// `#[must_use]`, which it already is.
+#![allow(clippy::double_must_use)]
+
 #[macro_use]
 extern crate log;
 
@@ -41,10 +45,10 @@ async fn main() {
         Connection::connect(
             &format!(
                 "amqp://{}:{}@{}:{}",
-                &config.rabbit.username,
-                &config.rabbit.password,
-                &config.rabbit.host,
-                &config.rabbit.port,
+                config.rabbit.username,
+                config.rabbit.password,
+                config.rabbit.host,
+                config.rabbit.port,
             ),
             ConnectionProperties::default(),
         )

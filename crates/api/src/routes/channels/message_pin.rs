@@ -186,7 +186,7 @@ mod test {
             .post(format!(
                 "/channels/{}/messages/{}/pin",
                 channel.id(),
-                &message.id
+                message.id
             ))
             .header(Header::new("x-session-token", session.token.to_string()))
             .dispatch()

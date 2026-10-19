@@ -74,13 +74,13 @@ pub async fn ban(
         }
     }
     // We do this outside the member check so we can sweep hit-and-run spammers who already left.
-    if let Some(seconds) = data.delete_message_seconds {
-        if seconds > 0 {
-            let threshold_time = SystemTime::now() - Duration::from_secs(seconds as u64);
+    if let Some(seconds) = data.delete_message_seconds
+        && seconds > 0
+    {
+        let threshold_time = SystemTime::now() - Duration::from_secs(seconds as u64);
 
-            Message::bulk_delete_by_author_since(db, &server.channels, target.id, threshold_time)
-                .await?;
-        }
+        Message::bulk_delete_by_author_since(db, &server.channels, target.id, threshold_time)
+            .await?;
     }
 
     let ban = ServerBan::create(db, &server, target.id, data.reason.clone()).await?;

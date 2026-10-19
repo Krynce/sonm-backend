@@ -274,7 +274,7 @@ impl Server {
     /// Ordered roles list
     pub fn ordered_roles(&self) -> Vec<(String, Role)> {
         let mut ordered_roles = self.roles.clone().into_iter().collect::<Vec<_>>();
-        ordered_roles.sort_by(|(_, role_a), (_, role_b)| role_a.rank.cmp(&role_b.rank));
+        ordered_roles.sort_by_key(|(_, role_a)| role_a.rank);
         ordered_roles
     }
 
@@ -355,7 +355,7 @@ impl Server {
         let Ok(mut redis) = get_connection().await else {
             return 0;
         };
-        let key = format!("member_count:{}", &self.id);
+        let key = format!("member_count:{}", self.id);
 
         if let Some(count) = redis.get::<_, Option<usize>>(&key).await.ok().flatten() {
             count

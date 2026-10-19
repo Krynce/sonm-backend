@@ -1,17 +1,20 @@
-use std::{collections::HashSet, net::SocketAddr, num::NonZeroUsize, sync::Arc};
+use std::{
+    collections::HashSet,
+    net::SocketAddr,
+    num::NonZeroUsize,
+    sync::{Arc, atomic::Ordering},
+    time::Instant,
+};
 
-use async_tungstenite::WebSocketStream;
+use async_tungstenite::{WebSocketReceiver, WebSocketSender};
 use fred::{
     error::RedisErrorKind,
     interfaces::{ClientLike, EventInterface, PubsubInterface},
     types::{ReconnectPolicy, RedisConfig},
 };
-use futures::{
-    FutureExt, SinkExt, StreamExt, TryStreamExt,
-    channel::oneshot,
-    join, pin_mut, select,
-    stream::{SplitSink, SplitStream},
-};
+// `WebSocketSender::send` is an inherent method here (its `Sink` impl sits behind a feature
+// we don't enable) and flushes the same way `SinkExt::send` did.
+use futures::{FutureExt, TryStreamExt, channel::oneshot, join, pin_mut, select};
 use redis_kiss::{AsyncCommands, PayloadType, REDIS_PAYLOAD_TYPE, REDIS_URI, get_connection};
 use sonm_config::report_internal_error;
 use sonm_database::{
@@ -21,7 +24,6 @@ use sonm_database::{
 };
 use sonm_presence::{create_session, delete_session};
 
-use sentry::Level;
 use sonm_result::create_error;
 use tokio::{
     net::TcpStream,
@@ -32,11 +34,13 @@ use tokio_util::compat::{Compat, TokioAsyncReadCompatExt};
 
 use crate::config::{ProtocolConfiguration, WebsocketHandshakeCallback};
 use crate::events::state::{State, SubscriptionStateChange};
+use crate::metrics;
 use sonm_models::v0;
 
-type WsReader = SplitStream<WebSocketStream<Compat<TcpStream>>>;
-type WsWriter =
-    SplitSink<WebSocketStream<Compat<TcpStream>>, async_tungstenite::tungstenite::Message>;
+// `WebSocketStream::split` hands back its own halves rather than futures' `SplitSink`/
+// `SplitStream`; they implement the same `Sink`/`Stream` traits this file uses.
+type WsReader = WebSocketReceiver<Compat<TcpStream>>;
+type WsWriter = WebSocketSender<Compat<TcpStream>>;
 
 /// Start a new WebSocket client worker given access to the database,
 /// the relevant TCP stream and the remote address of the client.
@@ -124,6 +128,7 @@ pub async fn client(db: &'static Database, stream: TcpStream, addr: SocketAddr) 
     }
 
     // Download required data to local cache and send Ready payload.
+    let ready_started = Instant::now();
     let ready_payload = match report_internal_error!(
         state
             .generate_ready_payload(db, config.get_ready_payload_fields())
@@ -136,6 +141,8 @@ pub async fn client(db: &'static Database, stream: TcpStream, addr: SocketAddr) 
     if report_internal_error!(write.send(config.encode(&ready_payload)).await).is_err() {
         return;
     }
+
+    metrics::record_ready(ready_started.elapsed());
 
     let slowmodes = fetch_user_slowmodes(&user_id).await.unwrap_or_default();
     if !slowmodes.is_empty() {
@@ -273,6 +280,9 @@ async fn listener(
         Ok(())
     });
 
+    // This connection's contribution to the global subscription gauge
+    let mut tracked_subscriptions = 0;
+
     let mut message_rx = subscriber.message_rx();
     'out: loop {
         // Check for state changes for subscriptions.
@@ -290,6 +300,8 @@ async fn listener(
                     .cloned()
                     .collect::<Vec<String>>();
 
+                let count = subscribed.len();
+
                 // One SUBSCRIBE for everything: an account with a hundred servers would
                 // otherwise cost a hundred round-trips per connection.
                 if !subscribed.is_empty()
@@ -297,6 +309,8 @@ async fn listener(
                 {
                     break 'out;
                 }
+
+                metrics::track_subscriptions(&mut tracked_subscriptions, count);
 
                 #[cfg(debug_assertions)]
                 info!("{addr:?} has reset their subscriptions");
@@ -321,6 +335,9 @@ async fn listener(
                         break 'out;
                     }
                 }
+
+                let count = state.subscribed.read().await.len();
+                metrics::track_subscriptions(&mut tracked_subscriptions, count);
             }
             SubscriptionStateChange::None => {}
         }
@@ -371,7 +388,7 @@ async fn listener(
                     );
 
                     error!("{}", err);
-                    sentry::capture_message(&err, Level::Error);
+                    metrics::DECODE_ERRORS.fetch_add(1, Ordering::Relaxed);
                     break 'out;
                 };
 
@@ -401,13 +418,14 @@ async fn listener(
                 if let Err(e) = result {
                     use async_tungstenite::tungstenite::Error;
                     if !matches!(e, Error::AlreadyClosed | Error::ConnectionClosed) {
-                        let err = format!("Error while sending an event to {addr:?}: {e:?}");
-                        warn!("{}", err);
-                        sentry::capture_message(&err, Level::Warning);
+                        warn!("Error while sending an event to {addr:?}: {e:?}");
+                        metrics::SEND_ERRORS.fetch_add(1, Ordering::Relaxed);
                     }
 
                     break 'out;
                 }
+
+                metrics::EVENTS_SENT.fetch_add(1, Ordering::Relaxed);
 
                 if let EventV1::Logout = event {
                     info!("User {addr:?} received log out event!");
@@ -416,6 +434,8 @@ async fn listener(
             }
         }
     }
+
+    metrics::track_subscriptions(&mut tracked_subscriptions, 0);
 
     report_internal_error!(subscriber.quit().await).ok();
 }
@@ -478,15 +498,14 @@ async fn worker(
                     Ok(Some(msg)) => msg,
                     Ok(None) => {
                         warn!("Received a None message!");
-                        sentry::capture_message("Received a None message!", Level::Warning);
+                        metrics::READ_ERRORS.fetch_add(1, Ordering::Relaxed);
                         return;
                     }
                     Err(e) => {
                         use async_tungstenite::tungstenite::Error;
                         if !matches!(e, Error::AlreadyClosed | Error::ConnectionClosed) {
-                            let err = format!("Error while reading an event from {addr:?}: {e:?}");
-                            warn!("{}", err);
-                            sentry::capture_message(&err, Level::Warning);
+                            warn!("Error while reading an event from {addr:?}: {e:?}");
+                            metrics::READ_ERRORS.fetch_add(1, Ordering::Relaxed);
                         }
 
                         return;
@@ -534,8 +553,8 @@ async fn worker(
                             }
                         }
                     }
-                    ClientMessage::Ping { data, responded } => {
-                        if responded.is_none() {
+                    ClientMessage::Ping { data, responded }
+                        if responded.is_none() => {
                             write
                                 .lock()
                                 .await
@@ -543,7 +562,6 @@ async fn worker(
                                 .await
                                 .ok();
                         }
-                    }
                     _ => {}
                 }
             }

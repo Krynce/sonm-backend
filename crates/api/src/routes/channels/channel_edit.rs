@@ -95,10 +95,10 @@ pub async fn edit(
             nsfw,
             ..
         } => {
-            if data.remove.contains(&v0::FieldsChannel::Icon) {
-                if let Some(icon) = &icon {
-                    db.mark_attachment_as_deleted(&icon.id).await?;
-                }
+            if data.remove.contains(&v0::FieldsChannel::Icon)
+                && let Some(icon) = &icon
+            {
+                db.mark_attachment_as_deleted(&icon.id).await?;
             }
 
             for field in &data.remove {
@@ -166,10 +166,10 @@ pub async fn edit(
             slowmode,
             ..
         } => {
-            if data.remove.contains(&v0::FieldsChannel::Icon) {
-                if let Some(icon) = &icon {
-                    db.mark_attachment_as_deleted(&icon.id).await?;
-                }
+            if data.remove.contains(&v0::FieldsChannel::Icon)
+                && let Some(icon) = &icon
+            {
+                db.mark_attachment_as_deleted(&icon.id).await?;
             }
 
             for field in &data.remove {

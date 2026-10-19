@@ -2,3 +2,5 @@ Dockerfile
 target
 .mongo
 .env
+.git
+.data

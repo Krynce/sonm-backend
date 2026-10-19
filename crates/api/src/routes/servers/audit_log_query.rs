@@ -143,7 +143,7 @@ mod test {
             .client
             .get(format!(
                 "/servers/{}/audit_logs?include_users=true",
-                &server.id
+                server.id
             ))
             .header(Header::new("x-session-token", session.token.clone()))
             .dispatch()

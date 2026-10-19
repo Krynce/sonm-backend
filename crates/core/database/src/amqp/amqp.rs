@@ -81,10 +81,10 @@ impl AMQP {
             Connection::connect(
                 &format!(
                     "amqp://{}:{}@{}:{}",
-                    &config.rabbit.username,
-                    &config.rabbit.password,
-                    &config.rabbit.host,
-                    &config.rabbit.port,
+                    config.rabbit.username,
+                    config.rabbit.password,
+                    config.rabbit.host,
+                    config.rabbit.port,
                 ),
                 ConnectionProperties::default(),
             )

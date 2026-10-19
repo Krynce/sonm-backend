@@ -49,10 +49,13 @@ pub async fn assert_safe(password: &str) -> Result<()> {
         hasher.update(password);
         let pwd_hash = hasher.finalize();
 
+        // easypwned expects the plain lowercase SHA-1 hex. The `#02` that used to be in this
+        // specifier had no effect on `GenericArray`'s `LowerHex`, which is what clippy's
+        // `unused_format_specs` says; the test below pins the string this produces.
         let result = match CLIENT
             .get(format!(
-                "{}/hash/{pwd_hash:#02x}",
-                &config.api.security.easypwned
+                "{}/hash/{pwd_hash:x}",
+                config.api.security.easypwned
             ))
             .send()
             .await
@@ -76,4 +79,22 @@ pub async fn assert_safe(password: &str) -> Result<()> {
     };
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use sha1::{Digest, Sha1};
+
+    /// The URL `assert_safe` builds is a contract with easypwned: 40 lowercase hex
+    /// characters, no `0x` prefix, no padding.
+    #[test]
+    fn sha1_is_formatted_the_way_easypwned_wants() {
+        let mut hasher = Sha1::new();
+        hasher.update("password");
+
+        assert_eq!(
+            format!("{:x}", hasher.finalize()),
+            "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"
+        );
+    }
 }

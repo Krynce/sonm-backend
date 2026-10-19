@@ -19,10 +19,10 @@ fn url_to_absolute(page_url: &str, url: String) -> String {
         if page.is_err() {
             return "".to_string();
         }
-        return format!("{}{}", &page.unwrap().origin().unicode_serialization(), url);
+        return format!("{}{}", page.unwrap().origin().unicode_serialization(), url);
     }
     //Relative
-    format!("{}/{}", &page_url.trim_end_matches('/'), url)
+    format!("{}/{}", page_url.trim_end_matches('/'), url)
 }
 
 /// Create website metadata from URL and document
@@ -83,10 +83,10 @@ pub async fn create_website_embed(original_url: &str, document: &str) -> Option<
             .map(|s| s.trim().to_owned())
             .map(|url| {
                 let mut size = ImageSize::Preview;
-                if let Some(card) = meta.remove("twitter:card") {
-                    if &card == "summary_large_image" {
-                        size = ImageSize::Large;
-                    }
+                if let Some(card) = meta.remove("twitter:card")
+                    && &card == "summary_large_image"
+                {
+                    size = ImageSize::Large;
                 }
 
                 Image {
@@ -140,16 +140,15 @@ pub async fn create_website_embed(original_url: &str, document: &str) -> Option<
     populate_special(original_url.to_owned(), &mut metadata).await;
 
     // fetch video size if missing
-    if metadata.special.is_none() {
-        if let Some(Video { width, height, url }) = &metadata.video {
-            if url.is_empty() {
-                metadata.video.take();
-            } else if width == &0 || height == &0 {
-                metadata.video =
-                    match crate::requests::Request::fetch_video_metadata(url, None).await {
-                        Ok(Some(video)) => Some(video),
-                        _ => None,
-                    }
+    if metadata.special.is_none()
+        && let Some(Video { width, height, url }) = &metadata.video
+    {
+        if url.is_empty() {
+            metadata.video.take();
+        } else if width == &0 || height == &0 {
+            metadata.video = match crate::requests::Request::fetch_video_metadata(url, None).await {
+                Ok(Some(video)) => Some(video),
+                _ => None,
             }
         }
     }
@@ -160,21 +159,20 @@ pub async fn create_website_embed(original_url: &str, document: &str) -> Option<
     }
 
     // fetch image size if missing
-    if metadata.special.is_none() {
-        if let Some(Image {
+    if metadata.special.is_none()
+        && let Some(Image {
             width, height, url, ..
         }) = &metadata.image
-        {
-            if url.is_empty() {
-                metadata.image.take();
-            } else if width == &0 || height == &0 {
-                let size = metadata.image.as_ref().unwrap().size.clone();
-                metadata.image =
-                    match crate::requests::Request::fetch_image_metadata(url, None, size).await {
-                        Ok(Some(image)) => Some(image),
-                        _ => None,
-                    }
-            }
+    {
+        if url.is_empty() {
+            metadata.image.take();
+        } else if width == &0 || height == &0 {
+            let size = metadata.image.as_ref().unwrap().size.clone();
+            metadata.image =
+                match crate::requests::Request::fetch_image_metadata(url, None, size).await {
+                    Ok(Some(image)) => Some(image),
+                    _ => None,
+                }
         }
     }
 
