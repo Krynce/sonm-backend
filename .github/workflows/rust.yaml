@@ -33,6 +33,11 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
+      # mise installs the toolchain through rustup with the minimal profile, so the
+      # `components` in rust-toolchain.toml never arrive and the two lint steps below have
+      # nothing to run. Idempotent when they are already present.
+      - run: rustup component add rustfmt clippy
+
       # Without this every run rebuilds the whole dependency tree from scratch.
       - uses: Swatinem/rust-cache@v2
 
