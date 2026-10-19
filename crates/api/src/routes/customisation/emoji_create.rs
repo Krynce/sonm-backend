@@ -1,15 +1,14 @@
 use sonm_config::config;
-use sonm_database::{
-    AuditLogEntryAction, Database, Emoji, File, User, util::permissions::DatabasePermissionQuery,
-};
+use sonm_database::{AuditLogEntryAction, Database, Emoji, File, User};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use rocket::{State, serde::json::Json};
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_server_permission, validate};
 
 /// # Create New Emoji
 ///
@@ -26,11 +25,7 @@ pub async fn create_emoji(
     let config = config().await;
 
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     // Validate we have permission to write into parent
     match &data.parent {
@@ -38,10 +33,8 @@ pub async fn create_emoji(
             let server = db.fetch_server(id).await?;
 
             // Check for permission
-            let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-            calculate_server_permissions(&mut query)
-                .await
-                .throw_if_lacking_channel_permission(ChannelPermission::ManageCustomisation)?;
+            require_server_permission(db, &user, &server, ChannelPermission::ManageCustomisation)
+                .await?;
 
             // Check that we haven't hit the emoji limit
             let emojis = db.fetch_emoji_by_parent_id(&server.id).await?;

@@ -4,7 +4,8 @@ use sonm_models::v0::{self, DataEditBot};
 use sonm_result::{Result, create_error};
 
 use rocket::serde::json::Json;
-use validator::Validate;
+
+use crate::util::checks::validate;
 
 /// # Edit Bot
 ///
@@ -18,11 +19,7 @@ pub async fn edit_bot(
     data: Json<DataEditBot>,
 ) -> Result<Json<v0::BotWithUserResponse>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut bot = bot_id.as_bot(db).await?;
     if bot.owner != user.id {

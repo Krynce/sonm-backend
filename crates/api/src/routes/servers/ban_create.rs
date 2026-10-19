@@ -12,9 +12,9 @@ use std::time::{Duration, SystemTime};
 use rocket::{State, serde::json::Json};
 use sonm_permissions::{ChannelPermission, calculate_server_permissions};
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+use crate::util::checks::validate;
 
 /// # Ban User
 ///
@@ -31,11 +31,7 @@ pub async fn ban(
     data: Json<v0::DataBanCreate>,
 ) -> Result<Json<v0::ServerBan>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let server = server.as_server(db).await?;
 

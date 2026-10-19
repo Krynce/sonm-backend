@@ -6,9 +6,9 @@ use sonm_database::{
 };
 use sonm_models::v0;
 use sonm_permissions::{ChannelPermission, PermissionValue};
-use sonm_result::{Result, create_error};
+use sonm_result::Result;
 
-use validator::Validate;
+use crate::util::checks::validate;
 
 /// # Executes a webhook
 ///
@@ -24,11 +24,7 @@ pub async fn webhook_execute(
     idempotency: IdempotencyKey,
 ) -> Result<Json<v0::Message>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let webhook = webhook_id.as_webhook(db).await?;
     webhook.assert_token(&token)?;

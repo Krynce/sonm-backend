@@ -1,5 +1,3 @@
-use once_cell::sync::Lazy;
-use regex::Regex;
 use rocket::{State, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use sonm_database::{Account, Database, User};
@@ -7,17 +5,13 @@ use sonm_models::v0;
 use sonm_result::{Result, create_error};
 use validator::Validate;
 
-/// Regex for valid usernames
-///
-/// Block zero width space
-/// Block lookalike characters
-pub static RE_USERNAME: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\p{L}|[\d_.-])+$").unwrap());
+use crate::util::checks::validate;
 
 /// # Username Information
 #[derive(Validate, Serialize, Deserialize, JsonSchema)]
 pub struct DataChangeUsername {
     /// New username
-    #[validate(length(min = 2, max = 32), regex = "RE_USERNAME")]
+    #[validate(length(min = 2, max = 32), regex = "v0::RE_USERNAME")]
     username: String,
     /// Current account password
     #[validate(length(min = 8, max = 1024))]
@@ -36,11 +30,7 @@ pub async fn change_username(
     data: Json<DataChangeUsername>,
 ) -> Result<Json<v0::User>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     account
         .verify_password(&data.password)

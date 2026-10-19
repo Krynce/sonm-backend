@@ -14,7 +14,8 @@ use sonm_models::v0::ChannelSlowmode;
 use sonm_permissions::PermissionQuery;
 use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
 use sonm_result::{Result, create_error};
-use validator::Validate;
+
+use crate::util::checks::validate;
 
 /// # Send Message
 ///
@@ -30,11 +31,7 @@ pub async fn message_send(
     idempotency: IdempotencyKey,
 ) -> Result<Json<v0::Message>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     // Ensure we have permissions to send a message
     let channel = target.as_channel(db).await?;

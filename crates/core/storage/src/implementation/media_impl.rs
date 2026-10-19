@@ -7,7 +7,15 @@ use tempfile::NamedTempFile;
 use tiny_skia::Pixmap;
 use usvg::Transform;
 
-use crate::{MediaError, MediaRepository};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum MediaError {
+    #[error("image processing failed because {cause}")]
+    ImageProcessingFailed { cause: String },
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
+}
 
 pub struct MediaImpl {
     config: sonm_config::Files,
@@ -25,8 +33,8 @@ impl MediaImpl {
     }
 }
 
-impl MediaRepository for MediaImpl {
-    fn image_size(&self, f: &NamedTempFile) -> Option<(usize, usize)> {
+impl MediaImpl {
+    pub fn image_size(&self, f: &NamedTempFile) -> Option<(usize, usize)> {
         if let Ok(size) = imagesize::size(f.path())
             .inspect_err(|err| tracing::error!("Failed to generate image size! {err:?}"))
         {
@@ -36,7 +44,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn is_animated(&self, f: &NamedTempFile, mime: &str) -> Option<bool> {
+    pub fn is_animated(&self, f: &NamedTempFile, mime: &str) -> Option<bool> {
         match mime {
             // Current behaviour is to assume GIFs are animated, this checks for at least 2 frames
             "image/gif" => {
@@ -61,7 +69,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn image_size_vec(&self, v: &[u8], mime: &str) -> Option<(usize, usize)> {
+    pub fn image_size_vec(&self, v: &[u8], mime: &str) -> Option<(usize, usize)> {
         match mime {
             "image/svg+xml" => {
                 let mut options = usvg::Options::default();
@@ -83,7 +91,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn decode_image<R: Read + BufRead + Seek>(
+    pub fn decode_image<R: Read + BufRead + Seek>(
         &self,
         reader: &mut R,
         mime: &str,
@@ -146,7 +154,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn is_valid_image<R: Read + BufRead + Seek>(&self, reader: &mut R, mime: &str) -> bool {
+    pub fn is_valid_image<R: Read + BufRead + Seek>(&self, reader: &mut R, mime: &str) -> bool {
         match mime {
             "image/jxl" => jxl_oxide::JxlImage::builder()
                 .read(reader)
@@ -162,7 +170,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn create_thumbnail(&self, image: DynamicImage, tag: &str) -> Vec<u8> {
+    pub fn create_thumbnail(&self, image: DynamicImage, tag: &str) -> Vec<u8> {
         let [w, h] = self.config.preview.get(tag).unwrap();
 
         let image = image.thumbnail(image.width().min(*w as u32), image.height().min(*h as u32));
@@ -186,7 +194,7 @@ impl MediaRepository for MediaImpl {
         }
     }
 
-    fn video_size(&self, f: &NamedTempFile) -> Option<(i64, i64)> {
+    pub fn video_size(&self, f: &NamedTempFile) -> Option<(i64, i64)> {
         if let Ok(data) = ffprobe::ffprobe(f.path())
             .inspect_err(|err| tracing::error!("Failed to ffprobe file! {err:?}"))
         {
@@ -205,7 +213,7 @@ impl MediaRepository for MediaImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::{MediaImpl, MediaRepository};
+    use crate::MediaImpl;
     use std::io::{Cursor, Write};
     use tempfile::NamedTempFile;
 

@@ -8,9 +8,10 @@ use sonm_database::{
 use sonm_models::v0;
 use sonm_permissions::{ChannelPermission, calculate_server_permissions};
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::validate;
 
 /// # Edit Server
 ///
@@ -26,11 +27,7 @@ pub async fn edit(
     validated_ticket: Option<ValidatedTicket>,
 ) -> Result<Json<v0::Server>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut server = target.as_server(db).await?;
     let mut query = DatabasePermissionQuery::new(db, &user).server(&server);

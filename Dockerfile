@@ -36,7 +36,6 @@ COPY crates/core/parser/Cargo.toml ./crates/core/parser/
 COPY crates/core/permissions/Cargo.toml ./crates/core/permissions/
 COPY crates/core/presence/Cargo.toml ./crates/core/presence/
 COPY crates/core/result/Cargo.toml ./crates/core/result/
-COPY crates/core/coalesced/Cargo.toml ./crates/core/coalesced/
 COPY crates/core/ratelimits/Cargo.toml ./crates/core/ratelimits/
 RUN sh /tmp/build-image-layer.sh deps
 

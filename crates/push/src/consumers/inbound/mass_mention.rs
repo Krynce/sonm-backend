@@ -7,7 +7,7 @@ use std::{
 use crate::utils::{Consumer, render_notification_content};
 use anyhow::Result;
 use async_trait::async_trait;
-use lapin::{Channel, Connection, message::Delivery};
+use lapin::{Channel, message::Delivery};
 use sonm_database::{
     Database, Member, MessageFlagsValue, events::rabbit::*,
     util::bulk_permissions::BulkDatabasePermissionQuery,
@@ -16,10 +16,8 @@ use sonm_models::v0::{MessageFlags, PushNotification};
 use sonm_result::ToSonmError;
 
 #[derive(Clone)]
-#[allow(unused)]
 pub struct MassMessageConsumer {
     db: Database,
-    connection: Arc<Connection>,
     channel: Arc<Channel>,
 }
 
@@ -68,12 +66,8 @@ impl MassMessageConsumer {
 
 #[async_trait]
 impl Consumer for MassMessageConsumer {
-    async fn create(db: Database, connection: Arc<Connection>, channel: Arc<Channel>) -> Self {
-        Self {
-            db,
-            connection,
-            channel,
-        }
+    async fn create(db: Database, channel: Arc<Channel>) -> Self {
+        Self { db, channel }
     }
 
     fn channel(&self) -> &Arc<Channel> {

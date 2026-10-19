@@ -1,12 +1,13 @@
 use rocket::{State, serde::json::Json};
 use sonm_database::{
     Database, Message, MessageFilter, MessageQuery, MessageTimePeriod, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
+    util::reference::Reference,
 };
 use sonm_models::v0::{self, MessageSort};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
+
+use crate::util::checks::{require_channel_permission, validate};
 
 /// # Fetch Messages
 ///
@@ -19,11 +20,7 @@ pub async fn query(
     target: Reference<'_>,
     options: v0::OptionsQueryMessages,
 ) -> Result<Json<v0::BulkMessageResponse>> {
-    options.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&options)?;
 
     if let Some(MessageSort::Relevance) = options.sort {
         return Err(create_error!(InvalidOperation));
@@ -31,10 +28,7 @@ pub async fn query(
 
     let channel = target.as_channel(db).await?;
 
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ReadMessageHistory)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ReadMessageHistory).await?;
 
     let v0::OptionsQueryMessages {
         limit,

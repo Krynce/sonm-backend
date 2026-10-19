@@ -1,6 +1,7 @@
 use revolt_rocket_okapi::revolt_okapi::openapi3::OpenApi;
 use rocket::Route;
 
+mod github;
 mod webhook_delete;
 mod webhook_delete_message;
 mod webhook_delete_token;

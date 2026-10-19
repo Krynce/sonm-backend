@@ -5,8 +5,9 @@ use sonm_database::{
 };
 use sonm_models::v0::{DataEditWebhook, Webhook};
 use sonm_permissions::{ChannelPermission, Override, calculate_channel_permissions};
-use sonm_result::{Result, create_error};
-use validator::Validate;
+use sonm_result::Result;
+
+use crate::util::checks::validate;
 
 /// # Edits a webhook
 ///
@@ -20,11 +21,7 @@ pub async fn webhook_edit(
     data: Json<DataEditWebhook>,
 ) -> Result<Json<Webhook>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut webhook = webhook_id.as_webhook(db).await?;
     let channel = db.fetch_channel(&webhook.channel_id).await?;

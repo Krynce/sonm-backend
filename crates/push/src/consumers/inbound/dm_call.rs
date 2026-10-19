@@ -3,26 +3,20 @@ use std::{collections::HashMap, sync::Arc};
 use crate::utils::Consumer;
 use anyhow::Result;
 use async_trait::async_trait;
-use lapin::{Channel, Connection, message::Delivery};
+use lapin::{Channel, message::Delivery};
 use log::debug;
 use sonm_database::{Database, events::rabbit::*};
 
 #[derive(Clone)]
-#[allow(unused)]
 pub struct DmCallConsumer {
     db: Database,
-    connection: Arc<Connection>,
     channel: Arc<Channel>,
 }
 
 #[async_trait]
 impl Consumer for DmCallConsumer {
-    async fn create(db: Database, connection: Arc<Connection>, channel: Arc<Channel>) -> Self {
-        Self {
-            db,
-            connection,
-            channel,
-        }
+    async fn create(db: Database, channel: Arc<Channel>) -> Self {
+        Self { db, channel }
     }
 
     fn channel(&self) -> &Arc<Channel> {

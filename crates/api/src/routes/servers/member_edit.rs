@@ -22,9 +22,10 @@ use sonm_permissions::{
     ChannelPermission, calculate_channel_permissions, calculate_server_permissions,
 };
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::validate;
 
 /// # Edit Member
 ///
@@ -41,11 +42,7 @@ pub async fn edit(
     data: Json<v0::DataMemberEdit>,
 ) -> Result<Json<v0::Member>> {
     let mut data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     // Fetch server and member — three independent lookups, one round-trip
     let (server, target_user, mut member) = try_join!(

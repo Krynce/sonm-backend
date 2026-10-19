@@ -1,12 +1,11 @@
-use sonm_database::{
-    AMQP, Channel, Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_database::{AMQP, Channel, Database, User, util::reference::Reference};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
 
 use rocket::State;
 use rocket_empty::EmptyResponse;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Add Member to Group
 ///
@@ -25,10 +24,7 @@ pub async fn add_member(
     }
 
     let mut channel = group_id.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::InviteOthers)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::InviteOthers).await?;
 
     match &channel {
         Channel::Group { .. } => {

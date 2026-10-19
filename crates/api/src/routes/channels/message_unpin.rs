@@ -1,15 +1,11 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    AMQP, AuditLogEntryAction, Channel, Database, FieldsMessage, PartialMessage, SystemMessage,
-    User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_models::v0::MessageAuthor;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
-use sonm_result::{Result, create_error};
+use sonm_database::{AMQP, Database, User, util::reference::Reference};
+use sonm_result::Result;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use super::message_pin::set_pinned;
 
 /// # Unpins a message
 ///
@@ -24,61 +20,7 @@ pub async fn message_unpin(
     target: Reference<'_>,
     msg: Reference<'_>,
 ) -> Result<EmptyResponse> {
-    let channel = target.as_channel(db).await?;
-
-    if !matches!(channel, Channel::DirectMessage { .. }) {
-        let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-        calculate_channel_permissions(&mut query)
-            .await
-            .throw_if_lacking_channel_permission(ChannelPermission::ManageMessages)?;
-    }
-
-    let mut message = msg.as_message_in_channel(db, channel.id()).await?;
-
-    if !message.pinned.unwrap_or_default() {
-        return Err(create_error!(NotPinned));
-    }
-
-    message
-        .update(db, PartialMessage::default(), vec![FieldsMessage::Pinned])
-        .await?;
-
-    SystemMessage::MessageUnpinned {
-        id: message.id.clone(),
-        by: user.id.clone(),
-    }
-    .into_message(channel.id().to_string())
-    .send(
-        db,
-        Some(amqp),
-        MessageAuthor::System {
-            username: &user.username,
-            avatar: user.avatar.as_ref().map(|file| file.id.as_ref()),
-        },
-        None,
-        None,
-        &channel,
-        false,
-    )
-    .await?;
-
-    if let Some(server_id) = channel.server() {
-        AuditLogEntryAction::MessageUnpin {
-            message: message.id.clone(),
-            author: message.author.clone(),
-            channel: message.channel.clone(),
-        }
-        .insert(
-            db,
-            server_id.to_string(),
-            reason,
-            user.id,
-            Some(message.author),
-        )
-        .await;
-    }
-
-    Ok(EmptyResponse)
+    set_pinned(db, amqp, user, reason, target, msg, false).await
 }
 
 #[cfg(test)]

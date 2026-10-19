@@ -1,12 +1,10 @@
 use rocket::{State, serde::json::Json};
-use sonm_database::{
-    AuditLogEntry, AuditLogQuery, Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{AuditLogEntry, AuditLogQuery, Database, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
-use sonm_result::{Result, create_error};
-use validator::Validate;
+use sonm_permissions::ChannelPermission;
+use sonm_result::Result;
+
+use crate::util::checks::{require_server_permission, validate};
 
 /// # Audit Log Query
 ///
@@ -19,18 +17,11 @@ pub async fn query(
     target: Reference<'_>,
     options: v0::OptionsAuditLogQuery,
 ) -> Result<Json<v0::AuditLogQueryResponse>> {
-    options.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&options)?;
 
     let server = target.as_server(db).await?;
 
-    let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-    calculate_server_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ViewAuditLogs)?;
+    require_server_permission(db, &user, &server, ChannelPermission::ViewAuditLogs).await?;
 
     let v0::OptionsAuditLogQuery {
         user: user_filter,

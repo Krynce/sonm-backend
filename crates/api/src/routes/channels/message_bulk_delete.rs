@@ -2,16 +2,14 @@ use std::time::Duration;
 
 use rocket::{State, serde::json::Json};
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    AuditLogEntryAction, Database, Message, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{AuditLogEntryAction, Database, Message, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_channel_permission, validate};
 
 /// # Bulk Delete Messages
 ///
@@ -30,11 +28,7 @@ pub async fn bulk_delete_messages(
     options: Json<v0::OptionsBulkDelete>,
 ) -> Result<EmptyResponse> {
     let options = options.into_inner();
-    options.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&options)?;
 
     for id in &options.ids {
         if ulid::Ulid::from_string(id)
@@ -50,10 +44,7 @@ pub async fn bulk_delete_messages(
     }
 
     let channel = target.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageMessages)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageMessages).await?;
 
     Message::bulk_delete(db, target.id, options.ids.clone()).await?;
 

@@ -1,14 +1,14 @@
 use rocket::{State, serde::json::Json};
 use sonm_database::{
-    AuditLogEntryAction, Database, EmojiParent, PartialEmoji, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
+    AuditLogEntryAction, Database, EmojiParent, PartialEmoji, User, util::reference::Reference,
 };
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_server_permission, validate};
 
 /// # Edit Emoji
 ///
@@ -23,11 +23,7 @@ pub async fn edit_emoji(
     data: Json<v0::DataEditEmoji>,
 ) -> Result<Json<v0::Emoji>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut emoji = emoji_id.as_emoji(db).await?;
 
@@ -35,10 +31,8 @@ pub async fn edit_emoji(
         EmojiParent::Server { id } => {
             let server = db.fetch_server(id.as_str()).await?;
 
-            let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-            calculate_server_permissions(&mut query)
-                .await
-                .throw_if_lacking_channel_permission(ChannelPermission::ManageCustomisation)?;
+            require_server_permission(db, &user, &server, ChannelPermission::ManageCustomisation)
+                .await?;
         }
         EmojiParent::Detached => return Err(create_error!(NotAuthenticated)),
     }

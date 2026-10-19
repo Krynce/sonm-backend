@@ -1,13 +1,12 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    AuditLogEntryAction, Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_database::{AuditLogEntryAction, Database, User, util::reference::Reference};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Deletes a webhook
 ///
@@ -23,10 +22,7 @@ pub async fn webhook_delete(
     let webhook = webhook_id.as_webhook(db).await?;
     let channel = db.fetch_channel(&webhook.channel_id).await?;
 
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageWebhooks)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageWebhooks).await?;
 
     webhook.delete(db).await?;
 

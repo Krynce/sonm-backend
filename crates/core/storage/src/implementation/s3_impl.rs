@@ -7,19 +7,19 @@ use aws_sdk_s3::{
 };
 use sonm_config::FilesS3;
 
-use crate::{EncryptionRepository, FileStorageRepository};
+use crate::EncryptionKey;
 
-pub struct S3Storage<ER: EncryptionRepository> {
+pub struct S3Storage {
     client: Client,
-    encryption: ER,
+    encryption: EncryptionKey,
 }
 
-impl<ER: EncryptionRepository> S3Storage<ER> {
-    pub async fn from_config(encryption: ER) -> S3Storage<ER> {
+impl S3Storage {
+    pub async fn from_config(encryption: EncryptionKey) -> S3Storage {
         S3Storage::new(encryption, sonm_config::config().await.files.s3)
     }
 
-    pub fn new(encryption: ER, s3_config: FilesS3) -> S3Storage<ER> {
+    pub fn new(encryption: EncryptionKey, s3_config: FilesS3) -> S3Storage {
         let provider_name = "my-creds";
         let creds = Credentials::new(
             s3_config.access_key_id,
@@ -43,9 +43,8 @@ impl<ER: EncryptionRepository> S3Storage<ER> {
     }
 }
 
-#[async_trait::async_trait]
-impl<ER: EncryptionRepository> FileStorageRepository for S3Storage<ER> {
-    async fn create_bucket(&self, bucket_id: &str) -> anyhow::Result<()> {
+impl S3Storage {
+    pub async fn create_bucket(&self, bucket_id: &str) -> anyhow::Result<()> {
         self.client
             .create_bucket()
             .bucket(bucket_id)
@@ -56,7 +55,7 @@ impl<ER: EncryptionRepository> FileStorageRepository for S3Storage<ER> {
         Ok(())
     }
 
-    async fn fetch_and_decrypt_file(
+    pub async fn fetch_and_decrypt_file(
         &self,
         bucket_id: &str,
         path: &str,
@@ -84,7 +83,7 @@ impl<ER: EncryptionRepository> FileStorageRepository for S3Storage<ER> {
         }
     }
 
-    async fn encrypt_and_upload_file(
+    pub async fn encrypt_and_upload_file(
         &self,
         bucket_id: &str,
         path: &str,
@@ -104,7 +103,7 @@ impl<ER: EncryptionRepository> FileStorageRepository for S3Storage<ER> {
         Ok(iv)
     }
 
-    async fn delete_file(&self, bucket_id: &str, path: &str) -> anyhow::Result<()> {
+    pub async fn delete_file(&self, bucket_id: &str, path: &str) -> anyhow::Result<()> {
         self.client
             .delete_object()
             .bucket(bucket_id)

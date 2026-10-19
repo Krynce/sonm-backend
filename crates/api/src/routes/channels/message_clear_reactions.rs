@@ -1,11 +1,10 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    Database, PartialMessage, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_database::{Database, PartialMessage, User, util::reference::Reference};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Remove All Reactions from Message
 ///
@@ -21,10 +20,7 @@ pub async fn clear_reactions(
     msg: Reference<'_>,
 ) -> Result<EmptyResponse> {
     let channel = target.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageMessages)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageMessages).await?;
 
     // Fetch relevant message
     let mut message = msg.as_message_in_channel(db, channel.id()).await?;

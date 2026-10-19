@@ -1,17 +1,15 @@
 use rocket::{State, serde::json::Json};
 use sonm_database::{
-    AuditLogEntryAction, Channel, Database, File, User, Webhook,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
+    AuditLogEntryAction, Channel, Database, File, User, Webhook, util::reference::Reference,
 };
 use sonm_models::v0;
-use sonm_permissions::{
-    ChannelPermission, DEFAULT_WEBHOOK_PERMISSIONS, calculate_channel_permissions,
-};
+use sonm_permissions::{ChannelPermission, DEFAULT_WEBHOOK_PERMISSIONS};
 use sonm_result::{Result, create_error};
 use ulid::Ulid;
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_channel_permission, validate};
 
 /// # Creates a webhook
 ///
@@ -26,11 +24,7 @@ pub async fn create_webhook(
     data: Json<v0::CreateWebhookBody>,
 ) -> Result<Json<v0::Webhook>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let channel = channel_id.as_channel(db).await?;
 
@@ -38,10 +32,7 @@ pub async fn create_webhook(
         return Err(create_error!(InvalidOperation));
     }
 
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageWebhooks)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageWebhooks).await?;
 
     let webhook_id = Ulid::new().to_string();
 

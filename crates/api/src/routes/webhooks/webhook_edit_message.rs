@@ -5,8 +5,9 @@ use sonm_database::{
     Database, Message, PartialMessage, tasks::process_embeds::queue, util::reference::Reference,
 };
 use sonm_models::v0::{self, DataEditMessage, Embed};
-use sonm_models::validator::Validate;
 use sonm_result::{Result, create_error};
+
+use crate::util::checks::validate;
 
 /// # Edits a webhook message
 ///
@@ -21,11 +22,7 @@ pub async fn webhook_edit_message(
     data: Json<DataEditMessage>,
 ) -> Result<Json<v0::Message>> {
     let edit = data.into_inner();
-    edit.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&edit)?;
 
     Message::validate_sum(
         &edit.content,

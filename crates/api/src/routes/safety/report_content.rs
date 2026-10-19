@@ -8,6 +8,8 @@ use validator::Validate;
 
 use rocket::{State, serde::json::Json};
 
+use crate::util::checks::validate;
+
 /// # Report Data
 #[derive(Validate, Deserialize, JsonSchema)]
 pub struct DataReportContent {
@@ -30,11 +32,7 @@ pub async fn report_content(
     data: Json<DataReportContent>,
 ) -> Result<EmptyResponse> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     // Bots cannot create reports
     if user.bot.is_some() {

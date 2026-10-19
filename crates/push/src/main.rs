@@ -280,7 +280,7 @@ where
         consumer.tag()
     );
 
-    let delegate = Delegate(F::create(db.clone(), connection.clone(), channel.clone()).await);
+    let delegate = Delegate(F::create(db.clone(), channel.clone()).await);
 
     consumer.set_delegate(delegate);
 

@@ -3,7 +3,7 @@
 # the job count via CARGO_BUILD_JOBS. It defaults to 10.
 
 APPS="api gateway files embeds scheduler push voice"
-LIBS="config database storage models parser permissions presence result coalesced ratelimits"
+LIBS="config database storage models parser permissions presence result ratelimits"
 
 if [ -z "$TARGETARCH" ]; then
   :

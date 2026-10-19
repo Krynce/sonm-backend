@@ -1,11 +1,10 @@
 use rocket::{State, serde::json::Json};
-use sonm_database::{
-    Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{Database, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
+
+use crate::util::checks::require_server_permission;
 
 /// # Fetch Invites
 ///
@@ -18,10 +17,7 @@ pub async fn invites(
     target: Reference<'_>,
 ) -> Result<Json<Vec<v0::Invite>>> {
     let server = target.as_server(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-    calculate_server_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageServer)?;
+    require_server_permission(db, &user, &server, ChannelPermission::ManageServer).await?;
 
     db.fetch_invites_for_server(&server.id)
         .await

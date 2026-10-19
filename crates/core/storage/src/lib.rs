@@ -1,8 +1,6 @@
 mod implementation;
-mod repositories;
 
 pub use implementation::*;
-pub use repositories::*;
 
 use std::io::{BufRead, Read, Seek};
 
@@ -18,15 +16,11 @@ pub const AUTHENTICATION_TAG_SIZE_BYTES: usize = 16;
 ///
 /// `Client::from_conf` builds a fresh connection pool and credentials provider, so building
 /// one per operation threw away every kept-alive connection.
-static S3: tokio::sync::OnceCell<implementation::S3Storage<implementation::EncryptionKey>> =
-    tokio::sync::OnceCell::const_new();
+static S3: tokio::sync::OnceCell<S3Storage> = tokio::sync::OnceCell::const_new();
 
-async fn s3() -> &'static implementation::S3Storage<implementation::EncryptionKey> {
-    S3.get_or_init(|| async {
-        let encryption = implementation::EncryptionKey::from_config().await;
-        implementation::S3Storage::from_config(encryption).await
-    })
-    .await
+async fn s3() -> &'static S3Storage {
+    S3.get_or_init(|| async { S3Storage::from_config(EncryptionKey::from_config().await).await })
+        .await
 }
 
 /// Fetch a file from S3 (and decrypt it)
@@ -48,9 +42,9 @@ pub async fn delete_from_s3(bucket_id: &str, path: &str) -> Result<()> {
     report_internal_error!(s3().await.delete_file(bucket_id, path).await)
 }
 
-/// Determine size of image at temp file
-pub fn image_size(f: &NamedTempFile) -> Option<(usize, usize)> {
-    let media = MediaImpl::new(Files {
+/// Media processor for the helpers below, none of which read the config
+fn media() -> MediaImpl {
+    MediaImpl::new(Files {
         blocked_mime_types: Default::default(),
         cache_size: Default::default(),
         clamd_host: Default::default(),
@@ -72,154 +66,37 @@ pub fn image_size(f: &NamedTempFile) -> Option<(usize, usize)> {
         },
         scan_mime_types: Default::default(),
         webp_quality: Default::default(),
-    });
+    })
+}
 
-    media.image_size(f)
+/// Determine size of image at temp file
+pub fn image_size(f: &NamedTempFile) -> Option<(usize, usize)> {
+    media().image_size(f)
 }
 
 /// Determine size of image with buffer
 pub fn image_size_vec(v: &[u8], mime: &str) -> Option<(usize, usize)> {
-    let media = MediaImpl::new(Files {
-        blocked_mime_types: Default::default(),
-        cache_size: Default::default(),
-        clamd_host: Default::default(),
-        encryption_key: Default::default(),
-        limit: FilesLimit {
-            max_mega_pixels: 0,
-            max_pixel_side: 0,
-            min_file_size: 0,
-            min_resolution: [0, 0],
-        },
-        preview: Default::default(),
-        s3: FilesS3 {
-            access_key_id: Default::default(),
-            default_bucket: Default::default(),
-            endpoint: Default::default(),
-            path_style_buckets: Default::default(),
-            region: Default::default(),
-            secret_access_key: Default::default(),
-        },
-        scan_mime_types: Default::default(),
-        webp_quality: Default::default(),
-    });
-
-    media.image_size_vec(v, mime)
+    media().image_size_vec(v, mime)
 }
 
 /// Check whether an image file contains animation data
 pub fn is_animated(f: &NamedTempFile, mime: &str) -> Option<bool> {
-    let media = MediaImpl::new(Files {
-        blocked_mime_types: Default::default(),
-        cache_size: Default::default(),
-        clamd_host: Default::default(),
-        encryption_key: Default::default(),
-        limit: FilesLimit {
-            max_mega_pixels: 0,
-            max_pixel_side: 0,
-            min_file_size: 0,
-            min_resolution: [0, 0],
-        },
-        preview: Default::default(),
-        s3: FilesS3 {
-            access_key_id: Default::default(),
-            default_bucket: Default::default(),
-            endpoint: Default::default(),
-            path_style_buckets: Default::default(),
-            region: Default::default(),
-            secret_access_key: Default::default(),
-        },
-        scan_mime_types: Default::default(),
-        webp_quality: Default::default(),
-    });
-
-    media.is_animated(f, mime)
+    media().is_animated(f, mime)
 }
 
 /// Determine size of video at temp file
 pub fn video_size(f: &NamedTempFile) -> Option<(i64, i64)> {
-    let media = MediaImpl::new(Files {
-        blocked_mime_types: Default::default(),
-        cache_size: Default::default(),
-        clamd_host: Default::default(),
-        encryption_key: Default::default(),
-        limit: FilesLimit {
-            max_mega_pixels: 0,
-            max_pixel_side: 0,
-            min_file_size: 0,
-            min_resolution: [0, 0],
-        },
-        preview: Default::default(),
-        s3: FilesS3 {
-            access_key_id: Default::default(),
-            default_bucket: Default::default(),
-            endpoint: Default::default(),
-            path_style_buckets: Default::default(),
-            region: Default::default(),
-            secret_access_key: Default::default(),
-        },
-        scan_mime_types: Default::default(),
-        webp_quality: Default::default(),
-    });
-
-    media.video_size(f)
+    media().video_size(f)
 }
 
 /// Decode image from reader
 pub fn decode_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> Result<DynamicImage> {
-    let media = MediaImpl::new(Files {
-        blocked_mime_types: Default::default(),
-        cache_size: Default::default(),
-        clamd_host: Default::default(),
-        encryption_key: Default::default(),
-        limit: FilesLimit {
-            max_mega_pixels: 0,
-            max_pixel_side: 0,
-            min_file_size: 0,
-            min_resolution: [0, 0],
-        },
-        preview: Default::default(),
-        s3: FilesS3 {
-            access_key_id: Default::default(),
-            default_bucket: Default::default(),
-            endpoint: Default::default(),
-            path_style_buckets: Default::default(),
-            region: Default::default(),
-            secret_access_key: Default::default(),
-        },
-        scan_mime_types: Default::default(),
-        webp_quality: Default::default(),
-    });
-
-    report_internal_error!(media.decode_image(reader, mime))
+    report_internal_error!(media().decode_image(reader, mime))
 }
 
 /// Check whether given reader has a valid image
 pub fn is_valid_image<R: Read + BufRead + Seek>(reader: &mut R, mime: &str) -> bool {
-    let media = MediaImpl::new(Files {
-        blocked_mime_types: Default::default(),
-        cache_size: Default::default(),
-        clamd_host: Default::default(),
-        encryption_key: Default::default(),
-        limit: FilesLimit {
-            max_mega_pixels: 0,
-            max_pixel_side: 0,
-            min_file_size: 0,
-            min_resolution: [0, 0],
-        },
-        preview: Default::default(),
-        s3: FilesS3 {
-            access_key_id: Default::default(),
-            default_bucket: Default::default(),
-            endpoint: Default::default(),
-            path_style_buckets: Default::default(),
-            region: Default::default(),
-            secret_access_key: Default::default(),
-        },
-        scan_mime_types: Default::default(),
-        webp_quality: Default::default(),
-    });
-
-    media.is_valid_image(reader, mime)
+    media().is_valid_image(reader, mime)
 }
 
 /// Create thumbnail from given image

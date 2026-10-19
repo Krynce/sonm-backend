@@ -1,11 +1,10 @@
 use rocket::{State, serde::json::Json};
-use sonm_database::{
-    Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{Database, User, util::reference::Reference};
 use sonm_models::v0::Webhook;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Gets all webhooks
 ///
@@ -19,10 +18,7 @@ pub async fn fetch_webhooks(
 ) -> Result<Json<Vec<Webhook>>> {
     let channel = channel_id.as_channel(db).await?;
 
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageWebhooks)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageWebhooks).await?;
 
     Ok(Json(
         db.fetch_webhooks_for_channel(channel.id())

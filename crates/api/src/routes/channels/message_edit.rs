@@ -7,7 +7,8 @@ use sonm_database::{
 use sonm_models::v0::{self, Embed};
 use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
 use sonm_result::{Result, create_error};
-use validator::Validate;
+
+use crate::util::checks::validate;
 
 /// # Edit Message
 ///
@@ -22,11 +23,7 @@ pub async fn edit(
     edit: Json<v0::DataEditMessage>,
 ) -> Result<Json<v0::Message>> {
     let edit = edit.into_inner();
-    edit.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&edit)?;
 
     Message::validate_sum(
         &edit.content,

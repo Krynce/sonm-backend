@@ -7,9 +7,10 @@ use sonm_database::{
 use sonm_models::v0;
 use sonm_permissions::{ChannelPermission, calculate_server_permissions};
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::{audit_log_reason::AuditLogReason, voice::sync_server_voice_permissions};
+
+use crate::util::checks::validate;
 
 /// # Edit Role
 ///
@@ -26,11 +27,7 @@ pub async fn edit(
     data: Json<v0::DataEditRole>,
 ) -> Result<Json<v0::Role>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut server = target.as_server(db).await?;
     let mut query = DatabasePermissionQuery::new(db, &user).server(&server);

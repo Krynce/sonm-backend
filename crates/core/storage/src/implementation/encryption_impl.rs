@@ -6,8 +6,6 @@ use aes_gcm::{
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 
-use crate::EncryptionRepository;
-
 pub struct EncryptionKey {
     key: String,
     /// Built on first use: the base64 decode and AES key schedule are the same every time
@@ -37,8 +35,8 @@ impl EncryptionKey {
     }
 }
 
-impl EncryptionRepository for EncryptionKey {
-    fn decrypt_buffer(&self, mut buf: Vec<u8>, iv: &str) -> anyhow::Result<Vec<u8>> {
+impl EncryptionKey {
+    pub fn decrypt_buffer(&self, mut buf: Vec<u8>, iv: &str) -> anyhow::Result<Vec<u8>> {
         // A corrupt IV in the database must not take the process down.
         let iv = BASE64_STANDARD
             .decode(iv)
@@ -63,7 +61,7 @@ impl EncryptionRepository for EncryptionKey {
         Ok(buf)
     }
 
-    fn encrypt_buffer(&self, buf: &[u8]) -> anyhow::Result<(Vec<u8>, String)> {
+    pub fn encrypt_buffer(&self, buf: &[u8]) -> anyhow::Result<(Vec<u8>, String)> {
         let iv = Aes256Gcm::generate_nonce(&mut OsRng);
 
         let buf = self.create_cipher().encrypt(&iv, buf).map_err(|error| {

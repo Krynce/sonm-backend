@@ -3,10 +3,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use axum::Router;
 
 use tokio::net::TcpListener;
-use utoipa::{
-    Modify, OpenApi,
-    openapi::security::{Http, HttpAuthScheme, SecurityScheme},
-};
+use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 
 mod api;
@@ -40,20 +37,6 @@ async fn main() -> Result<(), std::io::Error> {
         ))
     )]
     struct ApiDoc;
-
-    #[allow(dead_code)]
-    struct SecurityAddon;
-
-    impl Modify for SecurityAddon {
-        fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-            if let Some(components) = openapi.components.as_mut() {
-                components.add_security_scheme(
-                    "api_key",
-                    SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
-                )
-            }
-        }
-    }
 
     // Configure Axum and router
     let app = Router::new()

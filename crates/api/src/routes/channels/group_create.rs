@@ -4,7 +4,8 @@ use sonm_result::{Result, create_error};
 
 use rocket::State;
 use rocket::serde::json::Json;
-use validator::Validate;
+
+use crate::util::checks::validate;
 
 /// # Create Group
 ///
@@ -21,11 +22,7 @@ pub async fn create_group(
     }
 
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     for target in &data.users {
         match user.relationship_with(target) {

@@ -1,15 +1,13 @@
 use rocket::{State, serde::json::Json};
 use sonm_config::config;
-use sonm_database::{
-    AuditLogEntryAction, Database, Role, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{AuditLogEntryAction, Database, Role, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_server_permission, validate};
 
 /// # Create Role
 ///
@@ -24,17 +22,10 @@ pub async fn create(
     data: Json<v0::DataCreateRole>,
 ) -> Result<Json<v0::NewRoleResponse>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let server = target.as_server(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-    calculate_server_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageRole)?;
+    require_server_permission(db, &user, &server, ChannelPermission::ManageRole).await?;
 
     let config = config().await;
     if server.roles.len() >= config.features.limits.global.server_roles {

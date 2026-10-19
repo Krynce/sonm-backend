@@ -46,7 +46,6 @@ ulid = "1.2.1"
 nanoid = "0.4.0"
 typenum = "1.17.0"
 num_enum = "0.6.1"
-bitfield = "0.13.2"
 
 # Time
 chrono = "0.4.15"
@@ -55,7 +54,6 @@ iso8601-timestamp = "0.2.10"
 # Data Collections
 lru = "0.16.3"
 indexmap = "2.13.1"
-dashmap = "5.2.0"
 moka = "0.12.8"
 lru_time_cache = "0.11.11"
 deadqueue = "0.2.4"
@@ -175,7 +173,6 @@ tempfile = "3.12.0"
 aes-gcm = "0.10.3"
 auto_ops = "0.3.0"
 url = "2.2.2"
-impl_ops = "0.1.1"
 lazy_static = "1.5.0"
 mime = "0.3.17"
 totp-lite = "2.0.0"
@@ -188,7 +185,6 @@ futures-lite = "2.6.1"
 vergen = "7.5.0"
 
 # Local packages
-sonm-coalesced = { version = "0.1.0", path = "crates/core/coalesced" }
 sonm-config = { version = "0.1.0", path = "crates/core/config" }
 sonm-database = { version = "0.1.0", path = "crates/core/database" }
 sonm-storage = { version = "0.1.0", path = "crates/core/storage" }

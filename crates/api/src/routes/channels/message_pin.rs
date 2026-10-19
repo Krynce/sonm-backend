@@ -1,14 +1,16 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
 use sonm_database::{
-    AMQP, AuditLogEntryAction, Channel, Database, PartialMessage, SystemMessage, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
+    AMQP, AuditLogEntryAction, Channel, Database, FieldsMessage, PartialMessage, SystemMessage,
+    User, util::reference::Reference,
 };
 use sonm_models::v0::MessageAuthor;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Pins a message
 ///
@@ -23,65 +25,97 @@ pub async fn message_pin(
     target: Reference<'_>,
     msg: Reference<'_>,
 ) -> Result<EmptyResponse> {
+    set_pinned(db, amqp, user, reason, target, msg, true).await
+}
+
+/// Shared body of [`message_pin`] and `message_unpin`
+pub async fn set_pinned(
+    db: &Database,
+    amqp: &AMQP,
+    user: User,
+    reason: AuditLogReason,
+    target: Reference<'_>,
+    msg: Reference<'_>,
+    pinned: bool,
+) -> Result<EmptyResponse> {
     let channel = target.as_channel(db).await?;
 
     if !matches!(channel, Channel::DirectMessage { .. }) {
-        let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-        calculate_channel_permissions(&mut query)
-            .await
-            .throw_if_lacking_channel_permission(ChannelPermission::ManageMessages)?;
+        require_channel_permission(db, &user, &channel, ChannelPermission::ManageMessages).await?;
     }
 
     let mut message = msg.as_message_in_channel(db, channel.id()).await?;
 
-    if message.pinned.unwrap_or_default() {
-        return Err(create_error!(AlreadyPinned));
+    match (pinned, message.pinned.unwrap_or_default()) {
+        (true, true) => return Err(create_error!(AlreadyPinned)),
+        (false, false) => return Err(create_error!(NotPinned)),
+        _ => {}
     }
 
-    message
-        .update(
+    if pinned {
+        let partial = PartialMessage {
+            pinned: Some(true),
+            ..Default::default()
+        };
+        message.update(db, partial, vec![]).await?;
+    } else {
+        message
+            .update(db, PartialMessage::default(), vec![FieldsMessage::Pinned])
+            .await?;
+    }
+
+    let (id, by) = (message.id.clone(), user.id.clone());
+    let system_message = if pinned {
+        SystemMessage::MessagePinned { id, by }
+    } else {
+        SystemMessage::MessageUnpinned { id, by }
+    };
+
+    system_message
+        .into_message(channel.id().to_string())
+        .send(
             db,
-            PartialMessage {
-                pinned: Some(true),
-                ..Default::default()
+            Some(amqp),
+            MessageAuthor::System {
+                username: &user.username,
+                avatar: user.avatar.as_ref().map(|file| file.id.as_ref()),
             },
-            vec![],
+            None,
+            None,
+            &channel,
+            false,
         )
         .await?;
 
-    SystemMessage::MessagePinned {
-        id: message.id.clone(),
-        by: user.id.clone(),
-    }
-    .into_message(channel.id().to_string())
-    .send(
-        db,
-        Some(amqp),
-        MessageAuthor::System {
-            username: &user.username,
-            avatar: user.avatar.as_ref().map(|file| file.id.as_ref()),
-        },
-        None,
-        None,
-        &channel,
-        false,
-    )
-    .await?;
-
     if let Some(server_id) = channel.server() {
-        AuditLogEntryAction::MessagePin {
-            message: message.id.clone(),
-            author: message.author.clone(),
-            channel: message.channel.clone(),
-        }
-        .insert(
-            db,
-            server_id.to_string(),
-            reason,
-            user.id,
-            Some(message.author),
-        )
-        .await;
+        let (message_id, author, channel_id) = (
+            message.id.clone(),
+            message.author.clone(),
+            message.channel.clone(),
+        );
+        let action = if pinned {
+            AuditLogEntryAction::MessagePin {
+                message: message_id,
+                author,
+                channel: channel_id,
+            }
+        } else {
+            AuditLogEntryAction::MessageUnpin {
+                message: message_id,
+                author,
+                channel: channel_id,
+            }
+        };
+
+        action
+            .insert(
+                db,
+                server_id.to_string(),
+                reason,
+                user.id,
+                Some(message.author),
+            )
+            .await;
     }
 
     Ok(EmptyResponse)

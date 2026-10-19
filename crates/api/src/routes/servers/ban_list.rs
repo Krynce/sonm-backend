@@ -1,13 +1,14 @@
 use futures::future::join_all;
-use sonm_database::util::permissions::DatabasePermissionQuery;
 use sonm_database::util::reference::Reference;
 use sonm_database::{Database, User};
 use sonm_models::v0;
 
 use rocket::State;
 use rocket::serde::json::Json;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
+
+use crate::util::checks::require_server_permission;
 
 /// # Fetch Bans
 ///
@@ -20,10 +21,7 @@ pub async fn list(
     target: Reference<'_>,
 ) -> Result<Json<v0::BanListResult>> {
     let server = target.as_server(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-    calculate_server_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::BanMembers)?;
+    require_server_permission(db, &user, &server, ChannelPermission::BanMembers).await?;
 
     let bans = db.fetch_bans(&server.id).await?;
     let users = join_all(

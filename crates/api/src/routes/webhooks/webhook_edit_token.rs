@@ -2,8 +2,9 @@ use rocket::{State, serde::json::Json};
 use sonm_database::util::reference::Reference;
 use sonm_database::{Database, File, PartialWebhook};
 use sonm_models::v0::{DataEditWebhook, Webhook};
-use sonm_models::validator::Validate;
-use sonm_result::{Result, create_error};
+use sonm_result::Result;
+
+use crate::util::checks::validate;
 
 /// # Edits a webhook
 ///
@@ -17,11 +18,7 @@ pub async fn webhook_edit_token(
     data: Json<DataEditWebhook>,
 ) -> Result<Json<Webhook>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut webhook = webhook_id.as_webhook(db).await?;
     webhook.assert_token(&token)?;

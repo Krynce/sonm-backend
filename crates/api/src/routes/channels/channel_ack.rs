@@ -1,11 +1,10 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    AMQP, Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_database::{AMQP, Database, User, util::reference::Reference};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
+
+use crate::util::checks::require_channel_permission;
 
 /// # Acknowledge Message
 ///
@@ -24,10 +23,7 @@ pub async fn ack(
     }
 
     let channel = target.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ViewChannel)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ViewChannel).await?;
 
     channel
         .ack(&user.id, message.id, amqp)

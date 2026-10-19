@@ -7,7 +7,7 @@ use std::{
 use anyhow::Result;
 use async_trait::async_trait;
 use lapin::{
-    BasicProperties, Channel, Connection, ConsumerDelegate, Error as AMQPError,
+    BasicProperties, Channel, ConsumerDelegate, Error as AMQPError,
     message::{Delivery, DeliveryResult},
     options::{BasicAckOptions, BasicNackOptions, BasicPublishOptions},
 };
@@ -16,7 +16,7 @@ use sonm_database::Database;
 
 #[async_trait]
 pub trait Consumer: Clone + Send + Sync + 'static {
-    async fn create(db: Database, connection: Arc<Connection>, channel: Arc<Channel>) -> Self;
+    async fn create(db: Database, channel: Arc<Channel>) -> Self;
     fn channel(&self) -> &Arc<Channel>;
     async fn consume(&self, delivery: Delivery) -> Result<()>;
 

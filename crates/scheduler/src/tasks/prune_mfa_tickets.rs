@@ -4,7 +4,7 @@ use sonm_database::Database;
 use sonm_result::Result;
 use tokio::time::sleep;
 
-pub async fn task(db: Database) -> Result<()> {
+pub async fn task(db: Database, _: sonm_database::AMQP) -> Result<()> {
     loop {
         let count = db.delete_expired_tickets().await?;
         log::info!("Pruned {count} expired MFA tickets");

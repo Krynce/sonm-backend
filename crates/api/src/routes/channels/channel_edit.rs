@@ -2,15 +2,16 @@ use rocket::{State, serde::json::Json};
 use sonm_database::{
     AMQP, AuditLogEntryAction, Channel, Database, FieldsChannel, File, PartialChannel,
     SystemMessage, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
+    util::reference::Reference,
     voice::{UserVoiceChannel, VoiceClient, delete_voice_channel},
 };
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::{Result, create_error};
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_channel_permission, validate};
 
 /// # Edit Channel
 ///
@@ -27,17 +28,10 @@ pub async fn edit(
     data: Json<v0::DataEditChannel>,
 ) -> Result<Json<v0::Channel>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut channel = target.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageChannel)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ManageChannel).await?;
 
     if data.name.is_none()
         && data.description.is_none()
@@ -80,25 +74,14 @@ pub async fn edit(
             let old_owner = std::mem::replace(owner, new_owner.to_string());
 
             // Notify clients
-            SystemMessage::ChannelOwnershipChanged {
+            let message = SystemMessage::ChannelOwnershipChanged {
                 from: old_owner,
                 to: new_owner,
-            }
+            };
+            notify(db, amqp, &user, &channel, message).await;
         } else {
             return Err(create_error!(InvalidOperation));
         }
-        .into_message(channel.id().to_string())
-        .send(
-            db,
-            Some(amqp),
-            user.as_author_for_system(),
-            None,
-            None,
-            &channel,
-            false,
-        )
-        .await
-        .ok();
     }
 
     let before_channel = channel.clone();
@@ -152,58 +135,25 @@ pub async fn edit(
 
             // Send out mutation system messages.
             if let Some(name) = &partial.name {
-                SystemMessage::ChannelRenamed {
+                let message = SystemMessage::ChannelRenamed {
                     name: name.to_string(),
                     by: user.id.clone(),
-                }
-                .into_message(channel.id().to_string())
-                .send(
-                    db,
-                    Some(amqp),
-                    user.as_author_for_system(),
-                    None,
-                    None,
-                    &channel,
-                    false,
-                )
-                .await
-                .ok();
+                };
+                notify(db, amqp, &user, &channel, message).await;
             }
 
             if partial.description.is_some() {
-                SystemMessage::ChannelDescriptionChanged {
+                let message = SystemMessage::ChannelDescriptionChanged {
                     by: user.id.clone(),
-                }
-                .into_message(channel.id().to_string())
-                .send(
-                    db,
-                    Some(amqp),
-                    user.as_author_for_system(),
-                    None,
-                    None,
-                    &channel,
-                    false,
-                )
-                .await
-                .ok();
+                };
+                notify(db, amqp, &user, &channel, message).await;
             }
 
             if partial.icon.is_some() {
-                SystemMessage::ChannelIconChanged {
+                let message = SystemMessage::ChannelIconChanged {
                     by: user.id.clone(),
-                }
-                .into_message(channel.id().to_string())
-                .send(
-                    db,
-                    Some(amqp),
-                    user.as_author_for_system(),
-                    None,
-                    None,
-                    &channel,
-                    false,
-                )
-                .await
-                .ok();
+                };
+                notify(db, amqp, &user, &channel, message).await;
             }
         }
         Channel::TextChannel {
@@ -308,6 +258,29 @@ pub async fn edit(
     };
 
     Ok(Json(channel.into()))
+}
+
+/// Post a system message about this edit; a failure here must not fail the edit itself
+async fn notify(
+    db: &Database,
+    amqp: &AMQP,
+    user: &User,
+    channel: &Channel,
+    message: SystemMessage,
+) {
+    message
+        .into_message(channel.id().to_string())
+        .send(
+            db,
+            Some(amqp),
+            user.as_author_for_system(),
+            None,
+            None,
+            channel,
+            false,
+        )
+        .await
+        .ok();
 }
 
 #[cfg(test)]

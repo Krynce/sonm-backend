@@ -2,8 +2,9 @@ use rocket::State;
 use rocket::serde::json::Json;
 use sonm_database::{Bot, Database, User};
 use sonm_models::v0;
-use sonm_result::{Result, create_error};
-use validator::Validate;
+use sonm_result::Result;
+
+use crate::util::checks::validate;
 
 /// # Create Bot
 ///
@@ -16,11 +17,7 @@ pub async fn create_bot(
     info: Json<v0::DataCreateBot>,
 ) -> Result<Json<v0::BotWithUserResponse>> {
     let info = info.into_inner();
-    info.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&info)?;
 
     let (bot, user) = Bot::create(db, info.name, &user, None).await?;
     Ok(Json(v0::BotWithUserResponse {

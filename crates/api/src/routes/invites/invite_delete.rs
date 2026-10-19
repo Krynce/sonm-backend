@@ -1,13 +1,12 @@
 use rocket::State;
 use rocket_empty::EmptyResponse;
-use sonm_database::{
-    AuditLogEntryAction, Database, Invite, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
+use sonm_database::{AuditLogEntryAction, Database, Invite, User, util::reference::Reference};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::require_server_permission;
 
 /// # Delete Invite
 ///
@@ -34,10 +33,8 @@ pub async fn delete(
                 ..
             } => {
                 let server = db.fetch_server(&server).await?;
-                let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-                calculate_server_permissions(&mut query)
-                    .await
-                    .throw_if_lacking_channel_permission(ChannelPermission::ManageServer)?;
+                require_server_permission(db, &user, &server, ChannelPermission::ManageServer)
+                    .await?;
 
                 db.delete_invite(&code).await?;
 

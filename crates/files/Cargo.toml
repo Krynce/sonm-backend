@@ -13,7 +13,6 @@ nanoid = { workspace = true }
 # Media processing
 webp = { workspace = true }
 sha2 = { workspace = true }
-jxl-oxide = { workspace = true }
 kamadak-exif = { workspace = true }
 image = { workspace = true, features = [
     "avif-native",

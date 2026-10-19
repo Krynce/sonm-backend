@@ -8,7 +8,7 @@ use base64::{
     Engine as _,
     engine::{self},
 };
-use lapin::{Channel as AMQPChannel, Connection, message::Delivery};
+use lapin::{Channel as AMQPChannel, message::Delivery};
 use sonm_database::{Database, events::rabbit::*, util::format_display_name};
 use web_push::{
     ContentEncoding, IsahcWebPushClient, SubscriptionInfo, SubscriptionKeys, VapidSignatureBuilder,
@@ -16,10 +16,8 @@ use web_push::{
 };
 
 #[derive(Clone)]
-#[allow(unused)]
 pub struct VapidOutboundConsumer {
     db: Database,
-    connection: Arc<Connection>,
     channel: Arc<AMQPChannel>,
     client: IsahcWebPushClient,
     pkey: Arc<Vec<u8>>,
@@ -27,7 +25,7 @@ pub struct VapidOutboundConsumer {
 
 #[async_trait]
 impl Consumer for VapidOutboundConsumer {
-    async fn create(db: Database, connection: Arc<Connection>, channel: Arc<AMQPChannel>) -> Self {
+    async fn create(db: Database, channel: Arc<AMQPChannel>) -> Self {
         let config = sonm_config::config().await;
 
         if config.push.vapid.private_key.is_empty() || config.push.vapid.public_key.is_empty() {
@@ -42,7 +40,6 @@ impl Consumer for VapidOutboundConsumer {
 
         Self {
             db,
-            connection,
             channel,
             client: IsahcWebPushClient::new().unwrap(),
             pkey: web_push_private_key,

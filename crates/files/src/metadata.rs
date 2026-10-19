@@ -1,5 +1,3 @@
-use std::io::Cursor;
-
 use crate::utils::apply_icc_profile;
 use image::{GenericImageView, ImageReader};
 use sonm_database::Metadata;
@@ -65,35 +63,4 @@ pub fn generate_metadata(f: &NamedTempFile, mime_type: &str) -> Metadata {
     } else {
         Metadata::File
     }
-}
-
-/// Subroutine to ensure data isn't corrupted
-pub fn validate_from_metadata(
-    reader: Cursor<Vec<u8>>,
-    metadata: Metadata,
-    mime_type: &str,
-) -> Metadata {
-    if let Metadata::Image { .. } = &metadata {
-        if mime_type == "image/jxl" {
-            // Check if we can read using jxl-oxide crate
-            if jxl_oxide::JxlImage::builder()
-                .read(reader)
-                .inspect_err(|err| tracing::error!("Failed to read JXL! {err:?}"))
-                .is_err()
-            {
-                return Metadata::File;
-            }
-        } else if matches!(
-            // Check if we can read using image-rs crate
-            image::ImageReader::new(reader)
-                .with_guessed_format()
-                .inspect_err(|err| tracing::error!("Failed to read image! {err:?}"))
-                .map(|f| f.decode()),
-            Err(_) | Ok(Err(_))
-        ) {
-            return Metadata::File;
-        }
-    }
-
-    metadata
 }

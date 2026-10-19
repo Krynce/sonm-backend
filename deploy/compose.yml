@@ -131,7 +131,7 @@ services:
       - traefik.http.services.sonm-api.loadbalancer.healthcheck.path=/health
       - traefik.http.services.sonm-api.loadbalancer.healthcheck.interval=15s
       # Shared by every router below: drops the service prefix before proxying.
-      - traefik.http.middlewares.sonm-strip.stripprefix.prefixes=/api,/ws,/files,/autumn,/embeds,/january,/livekit
+      - traefik.http.middlewares.sonm-strip.stripprefix.prefixes=/api,/ws,/files,/embeds,/livekit
 
   gateway:
     <<: [*backend, *public]
@@ -168,8 +168,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy_net
-      # ponytail: /autumn — старые ссылки и вкладки старого клиента; убрать через пару недель
-      - traefik.http.routers.sonm-files.rule=Host(`${DOMAIN:?}`) && (PathPrefix(`/files`) || PathPrefix(`/autumn`))
+      - traefik.http.routers.sonm-files.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/files`)
       - traefik.http.routers.sonm-files.entrypoints=websecure
       - traefik.http.routers.sonm-files.tls.certresolver=myresolver
       - traefik.http.routers.sonm-files.middlewares=sonm-strip
@@ -187,8 +186,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy_net
-      # ponytail: /january — как /autumn выше
-      - traefik.http.routers.sonm-embeds.rule=Host(`${DOMAIN:?}`) && (PathPrefix(`/embeds`) || PathPrefix(`/january`))
+      - traefik.http.routers.sonm-embeds.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/embeds`)
       - traefik.http.routers.sonm-embeds.entrypoints=websecure
       - traefik.http.routers.sonm-embeds.tls.certresolver=myresolver
       # embeds has no database, so it cannot use the in-process ratelimiter the other

@@ -1,5 +1,3 @@
-use once_cell::sync::Lazy;
-use regex::Regex;
 use sonm_database::{Database, Session, User};
 use sonm_models::v0;
 use sonm_result::{Result, create_error};
@@ -8,17 +6,13 @@ use rocket::{State, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-/// Regex for valid usernames
-///
-/// Block zero width space
-/// Block lookalike characters
-pub static RE_USERNAME: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\p{L}|[\d_.-])+$").unwrap());
+use crate::util::checks::validate;
 
 /// # New User Data
 #[derive(Validate, Serialize, Deserialize, JsonSchema)]
 pub struct DataOnboard {
     /// New username which will be used to identify the user on the platform
-    #[validate(length(min = 2, max = 32), regex = "RE_USERNAME")]
+    #[validate(length(min = 2, max = 32), regex = "v0::RE_USERNAME")]
     username: String,
 }
 
@@ -38,11 +32,7 @@ pub async fn complete(
     }
 
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     Ok(Json(
         User::create(db, data.username, session.user_id, None)

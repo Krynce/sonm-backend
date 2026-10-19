@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use sonm_storage::{EncryptionKey, FileStorageRepository, MediaImpl, MediaRepository, S3Storage};
+use sonm_storage::{EncryptionKey, MediaImpl, S3Storage};
 
 #[tokio::test]
 async fn test_image_roundtrip_png() {

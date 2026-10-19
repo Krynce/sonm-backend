@@ -1,4 +1,4 @@
-use sonm_storage::{EncryptionKey, FileStorageRepository, S3Storage};
+use sonm_storage::{EncryptionKey, S3Storage};
 
 #[tokio::test]
 async fn test_upload_and_download() {

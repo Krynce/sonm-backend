@@ -4,7 +4,8 @@ use sonm_database::FieldsUser;
 use sonm_database::{Database, File, PartialUser, User, util::reference::Reference};
 use sonm_models::v0;
 use sonm_result::{Result, create_error};
-use validator::Validate;
+
+use crate::util::checks::validate;
 
 /// # Edit User
 ///
@@ -18,11 +19,7 @@ pub async fn edit(
     data: Json<v0::DataEditUser>,
 ) -> Result<Json<v0::User>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     // Filter out invalid edit fields
     if !user.privileged && (data.badges.is_some() || data.flags.is_some()) {

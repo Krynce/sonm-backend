@@ -3,15 +3,15 @@ use sonm_database::util::permissions::DatabasePermissionQuery;
 use sonm_database::{AMQP, AuditLogEntryAction, Member, PartialMember, PartialRole, Role};
 use sonm_database::{Database, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{
-    ChannelPermission, Override, calculate_channel_permissions, calculate_server_permissions,
-};
+use sonm_permissions::{ChannelPermission, Override, calculate_server_permissions};
 use sonm_result::{Result, create_error};
 
 use rocket::serde::json::Json;
 use rocket_empty::EmptyResponse;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Invite Bot
 ///
@@ -105,10 +105,8 @@ pub async fn invite_bot(
         v0::InviteBotDestination::Group { group } => {
             let mut channel = db.fetch_channel(&group).await?;
 
-            let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-            calculate_channel_permissions(&mut query)
-                .await
-                .throw_if_lacking_channel_permission(ChannelPermission::InviteOthers)?;
+            require_channel_permission(db, &user, &channel, ChannelPermission::InviteOthers)
+                .await?;
 
             channel
                 .add_user_to_group(db, amqp, &bot_user, &user.id)

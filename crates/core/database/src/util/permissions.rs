@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 
 use sonm_permissions::{
-    ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, Override, PermissionQuery, PermissionValue,
-    RelationshipStatus, calculate_user_permissions,
+    ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, Override, PermissionQuery, RelationshipStatus,
 };
 
 use crate::{Channel, Database, Member, Server, User};
@@ -20,9 +19,7 @@ pub struct DatabasePermissionQuery<'a> {
     member: Option<Cow<'a, Member>>,
 
     // flag_known_relationship: Option<&'a RelationshipStatus>,
-    cached_user_permission: Option<PermissionValue>,
     cached_mutual_connection: Option<bool>,
-    cached_permission: Option<u64>,
 }
 
 #[async_trait]
@@ -387,34 +384,7 @@ impl<'a> DatabasePermissionQuery<'a> {
             member: None,
 
             cached_mutual_connection: None,
-            cached_user_permission: None,
-            cached_permission: None,
         }
-    }
-
-    /// Calculate the user permission value
-    pub async fn calc_user(mut self) -> DatabasePermissionQuery<'a> {
-        if self.cached_user_permission.is_some() {
-            return self;
-        }
-
-        if self.user.is_none() {
-            panic!("Expected `PermissionCalculator.user to exist.");
-        }
-
-        DatabasePermissionQuery {
-            cached_user_permission: Some(calculate_user_permissions(&mut self).await),
-            ..self
-        }
-    }
-
-    /// Calculate the permission value
-    pub async fn calc(self) -> DatabasePermissionQuery<'a> {
-        if self.cached_permission.is_some() {
-            return self;
-        }
-
-        self
     }
 
     /// Use user

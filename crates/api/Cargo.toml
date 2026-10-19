@@ -16,18 +16,11 @@ redis-kiss = { workspace = true, default-features = false, features = [
 ] }
 
 # Utility
-lru = { workspace = true }
-url = { workspace = true }
 log = { workspace = true }
-dashmap = { workspace = true }
-linkify = { workspace = true }
 once_cell = { workspace = true }
 
 # Lang. Utilities
 regex = { workspace = true }
-num_enum = { workspace = true }
-impl_ops = { workspace = true }
-bitfield = { workspace = true }
 
 # ID / key generation
 ulid = { workspace = true }
@@ -42,15 +35,10 @@ iso8601-timestamp = { workspace = true }
 # async
 futures = { workspace = true }
 chrono = { workspace = true }
-async-channel = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true }
 
-# internal util
-lettre = { workspace = true }
-
 # web
-
 rocket = { workspace = true, features = ["json"] }
 rocket_cors = { workspace = true }
 rocket_empty = { workspace = true, features = ["schema"] }
@@ -59,9 +47,6 @@ rocket_prometheus = { workspace = true }
 # spec generation
 schemars = { workspace = true }
 revolt_rocket_okapi = { workspace = true, features = ["swagger"] }
-
-# rabbit
-lapin = { workspace = true, features = ["tokio"] }
 
 # core
 sonm-config = { workspace = true }

@@ -1,11 +1,10 @@
 use rocket::{State, serde::json::Json};
-use sonm_database::{
-    Database, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{Database, User, util::reference::Reference};
 use sonm_models::v0::{ResponseWebhook, Webhook};
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 use sonm_result::Result;
+
+use crate::util::checks::require_channel_permission;
 
 /// # Gets a webhook
 ///
@@ -20,10 +19,7 @@ pub async fn webhook_fetch(
     let webhook = webhook_id.as_webhook(db).await?;
     let channel = db.fetch_channel(&webhook.channel_id).await?;
 
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ViewChannel)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::ViewChannel).await?;
 
     Ok(Json(std::convert::Into::<Webhook>::into(webhook).into()))
 }

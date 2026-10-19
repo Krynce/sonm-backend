@@ -1,15 +1,15 @@
 use sonm_database::AuditLogEntryAction;
-use sonm_database::util::permissions::DatabasePermissionQuery;
 use sonm_database::{Channel, Database, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_server_permissions};
-use sonm_result::{Result, create_error};
+use sonm_permissions::ChannelPermission;
+use sonm_result::Result;
 
 use rocket::State;
 use rocket::serde::json::Json;
-use validator::Validate;
 
 use crate::util::audit_log_reason::AuditLogReason;
+
+use crate::util::checks::{require_server_permission, validate};
 
 /// # Create Channel
 ///
@@ -24,17 +24,10 @@ pub async fn create_server_channel(
     data: Json<v0::DataCreateServerChannel>,
 ) -> Result<Json<v0::Channel>> {
     let data = data.into_inner();
-    data.validate().map_err(|error| {
-        create_error!(FailedValidation {
-            error: error.to_string()
-        })
-    })?;
+    validate(&data)?;
 
     let mut server = server.as_server(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).server(&server);
-    calculate_server_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::ManageChannel)?;
+    require_server_permission(db, &user, &server, ChannelPermission::ManageChannel).await?;
 
     let channel_name = data.name.clone();
 

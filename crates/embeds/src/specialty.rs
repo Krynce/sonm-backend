@@ -5,23 +5,13 @@ use sonm_result::{Result, create_error};
 use crate::requests::{RE_URL_YOUTUBE, Request};
 pub struct SpecialtySitesGenerator {}
 
-#[allow(unused)]
 #[derive(Debug, Deserialize)]
 struct YoutubeOEmbed {
     pub title: String,
     pub author_name: String,
     pub author_url: String,
-    // #[serde(rename = "type")]
-    // pub kind: String,
-    // pub height: u32,
-    // pub width: u32,
-    // pub version: String,
     pub provider_name: String,
-    // pub provider_url: String,
-    // pub thumbnail_height: u32,
-    // pub thumbnail_width: u32,
     pub thumbnail_url: String,
-    // pub html: String,
 }
 
 impl SpecialtySitesGenerator {

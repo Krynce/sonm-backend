@@ -1,15 +1,14 @@
 use iso8601_timestamp::{Duration, Timestamp};
-use sonm_database::{
-    AuditLogEntryAction, Database, Invite, User,
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-};
+use sonm_database::{AuditLogEntryAction, Database, Invite, User, util::reference::Reference};
 use sonm_models::v0;
-use sonm_permissions::{ChannelPermission, calculate_channel_permissions};
+use sonm_permissions::ChannelPermission;
 
 use crate::util::audit_log_reason::AuditLogReason;
 use rocket::{State, serde::json::Json};
 use sonm_config::config;
 use sonm_result::{Result, create_error};
+
+use crate::util::checks::require_channel_permission;
 
 /// # Create Invite
 ///
@@ -48,10 +47,7 @@ pub async fn create_invite(
     }
 
     let channel = target.as_channel(db).await?;
-    let mut query = DatabasePermissionQuery::new(db, &user).channel(&channel);
-    calculate_channel_permissions(&mut query)
-        .await
-        .throw_if_lacking_channel_permission(ChannelPermission::InviteOthers)?;
+    require_channel_permission(db, &user, &channel, ChannelPermission::InviteOthers).await?;
 
     let invite =
         Invite::create_channel_invite(db, &user, &channel, data.max_uses, data.expires).await?;
