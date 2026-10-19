@@ -29,12 +29,17 @@ docker compose up -d api gateway files embeds push scheduler voice
 
 ## Проверка после деплоя
 
-- [ ] `docker compose ps` — все сервисы `healthy`/`running` на `v0.1.6`
-- [ ] `curl -s -o /dev/null -w "%{http_code}" https://chat.krynce.ru/autumn/` → 404,
-      `/files/` и `/embeds/` отвечают
-- [ ] в логах `scheduler` есть `Pruned … expired MFA tickets`
-- [ ] в Chrome: вход, отправка сообщения, закрепление/открепление, вложение
-- [ ] `docker compose logs api gateway files embeds push scheduler | grep -i panic` пусто
+- [x] `docker compose ps` — все сервисы `healthy`/`running` на `v0.1.6`
+- [x] `/files/` и `/embeds/` отвечают своим JSON-приветствием; `/autumn/` и `/january/`
+      отдают **200 с SPA**, а не 404: роутер веб-клиента — `Host(DOMAIN)` без префикса, то
+      есть catch-all, и снятые алиасы просто проваливаются в него. Проверять надо тело
+      ответа (`<!doctype html>` вместо JSON файлового сервера), а не код.
+- [x] в логах `scheduler` есть `Pruned … expired MFA tickets`
+- [ ] в Chrome: вход, отправка сообщения, закрепление/открепление, вложение — за владельцем
+- [x] `docker compose logs api gateway files embeds push scheduler | grep -i panic` пусто
+
+Отдачу настоящего файла через `/files/<tag>/<id>` проверить не удалось: коллекция
+`attachments` в прод-БД пуста.
 
 ## Откат
 
