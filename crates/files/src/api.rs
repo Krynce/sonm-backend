@@ -372,6 +372,14 @@ async fn upload_file(
 /// Header value used for cache control
 pub static CACHE_CONTROL: &str = "public, max-age=604800, must-revalidate";
 
+/// `Location` pointing at a sibling of the current `/{tag}/{file_id}/{name}` path
+///
+/// Kept relative because the reverse proxy strips a path prefix (`/files`) on the way in
+/// but does not rewrite `Location` on the way out, so an absolute path would escape it.
+fn sibling_location(file_name: &str) -> String {
+    format!("./{}", encode_component(file_name))
+}
+
 /// Whether the client already holds this exact representation
 ///
 /// `must-revalidate` means clients come back to us even while the entry is fresh; answering
@@ -480,9 +488,13 @@ async fn fetch_preview(
     if !matches!(hash.metadata, Metadata::Image { .. })
         || (is_animated && !matches!(tag, Tag::avatars | Tag::icons))
     {
-        return Ok(
-            Redirect::permanent(&format!("/{tag_str}/{file_id}/{}", file.filename)).into_response(),
-        );
+        // Relative to `/{tag}/{file_id}`, which has no trailing slash, so the id is repeated
+        return Ok(Redirect::permanent(&format!(
+            "{}/{}",
+            encode_component(&file_id),
+            encode_component(&file.filename)
+        ))
+        .into_response());
     }
 
     // Original image data
@@ -549,11 +561,7 @@ async fn fetch_file(
     // Ensure filename is correct
     if file_name != file.filename {
         if file_name == "original" {
-            let safe_filename = encode_component(&file.filename);
-
-            return Ok(
-                Redirect::permanent(&format!("/{tag}/{file_id}/{}", safe_filename)).into_response(),
-            );
+            return Ok(Redirect::permanent(&sibling_location(&file.filename)).into_response());
         }
 
         return Err(create_error!(NotFound));
@@ -624,11 +632,7 @@ async fn fetch_file_mod(
     // Ensure filename is correct
     if file_name != file.filename {
         if file_name == "original" {
-            let safe_filename = encode_component(&file.filename);
-
-            return Ok(
-                Redirect::permanent(&format!("/{tag}/{file_id}/{}", safe_filename)).into_response(),
-            );
+            return Ok(Redirect::permanent(&sibling_location(&file.filename)).into_response());
         }
 
         return Err(create_error!(NotFound));
