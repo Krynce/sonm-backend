@@ -71,7 +71,7 @@ feature-depth = 1
 # output a note when they are encountered.
 # Baseline started at 23 entries on 2026-10-19 when this check was wired into CI; 18 were
 # cleared the same day (toolchain to 1.99.1, a lockfile refresh, and the bumps listed in
-# item 4.6 of BACKEND_OPTIMIZATION_PLAN.md). These five are what is left, and each one is
+# item 4.6 of BACKEND_OPTIMIZATION_PLAN.md). Two more (chrono, crypto-bigint) arrived 2026-11-24. These seven are what is left; each is
 # blocked on something outside this repository.
 #
 # Rules for this list: every entry names what blocks it, entries get deleted as that changes,
@@ -90,6 +90,12 @@ ignore = [
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error, build-time only, via utoipa-gen 4 and axum_typed_multipart_macros" },
     { id = "RUSTSEC-2024-0436", reason = "paste, build-time only, via pulp <- exr <- image" },
     { id = "RUSTSEC-2025-0141", reason = "bincode 1.3 is the gateway's wire format and redis-kiss's; changing it is a protocol change" },
+    # Also reached through axum_typed_multipart, pbjson-types (livekit) and web-push, so
+    # dropping our own direct use would not clear it.
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained, no successor release; transitive via axum_typed_multipart, pbjson-types, web-push" },
+
+    # Fixed only in crypto-bigint 0.7.6; aws-sigv4 1.6 and elliptic-curve 0.13 pin ^0.5.
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5 timing, fix is 0.7 only; pinned by aws-sigv4 and elliptic-curve 0.13 (web-push, livekit JWT)" },
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
